@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teacher OS - UX Color Themes</title>
+  <style>
+    body{font-family:Inter,system-ui,sans-serif;margin:0;background:#f5f7fb;color:#1a2333}
+    header{padding:16px 20px;border-bottom:1px solid #d8e0ec;background:#fff;position:sticky;top:0}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;padding:18px}
+    .card{background:#fff;border:1px solid #d8e0ec;border-radius:12px;overflow:hidden}
+    .title{padding:10px 12px;font-weight:600;border-bottom:1px solid #e8edf6}
+    .sw{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px}
+    .chip{height:56px;border-radius:8px;border:1px solid rgba(0,0,0,.08);padding:6px;font-size:11px;display:flex;align-items:flex-end}
+    .demo{padding:12px;border-top:1px solid #e8edf6;font-size:12px}
+    .btn{display:inline-block;padding:8px 10px;border-radius:8px;color:#fff;font-weight:600}
+  </style>
+</head>
+<body>
+<header>
+  <strong>Teacher OS Color Theme Visualizer</strong>
+  <div style="font-size:12px;color:#61718c">Recommended baseline: Theme A (Calm Trust)</div>
+</header>
+<div class="grid">
+  <section class="card"><div class="title">Theme A - Calm Trust</div><div class="sw">
+    <div class="chip" style="background:#1f4ea3;color:#fff">Primary #1F4EA3</div>
+    <div class="chip" style="background:#2c8a5b;color:#fff">Success #2C8A5B</div>
+    <div class="chip" style="background:#b97a10;color:#fff">Warning #B97A10</div>
+    <div class="chip" style="background:#c8532f;color:#fff">Risk #C8532F</div>
+  </div><div class="demo"><span class="btn" style="background:#1f4ea3">Approve and Share</span></div></section>
+
+  <section class="card"><div class="title">Theme B - Academic Slate</div><div class="sw">
+    <div class="chip" style="background:#26406f;color:#fff">Primary #26406F</div>
+    <div class="chip" style="background:#337a56;color:#fff">Success #337A56</div>
+    <div class="chip" style="background:#b4861f;color:#fff">Warning #B4861F</div>
+    <div class="chip" style="background:#b94e3a;color:#fff">Risk #B94E3A</div>
+  </div><div class="demo"><span class="btn" style="background:#26406f">Approve and Share</span></div></section>
+
+  <section class="card"><div class="title">Theme C - Soft Contrast</div><div class="sw">
+    <div class="chip" style="background:#2c5aa0;color:#fff">Primary #2C5AA0</div>
+    <div class="chip" style="background:#3f8c66;color:#fff">Success #3F8C66</div>
+    <div class="chip" style="background:#a97917;color:#fff">Warning #A97917</div>
+    <div class="chip" style="background:#be5a3e;color:#fff">Risk #BE5A3E</div>
+  </div><div class="demo"><span class="btn" style="background:#2c5aa0">Approve and Share</span></div></section>
+</div>
+</body>
+</html>

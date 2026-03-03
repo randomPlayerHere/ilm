@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teacher OS - UX Design Directions</title>
+  <style>
+    :root {
+      --bg: #f4f6fa;
+      --surface: #ffffff;
+      --text: #172033;
+      --muted: #60708a;
+      --primary: #1f4ea3;
+      --success: #2c8a5b;
+      --warning: #b97a10;
+      --risk: #c8532f;
+      --border: #dbe2ee;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #eef2f9, #f7f9fc);
+    }
+    header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,.85);
+      position: sticky;
+      top: 0;
+      backdrop-filter: blur(8px);
+      z-index: 10;
+    }
+    h1 { margin: 0 0 6px; font-size: 20px; }
+    p { margin: 0; color: var(--muted); }
+    .grid {
+      display: grid;
+      gap: 18px;
+      padding: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 6px 16px rgba(23, 32, 51, 0.05);
+    }
+    .card h2 {
+      font-size: 14px;
+      margin: 0;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      background: #f9fbff;
+    }
+    .mock {
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+      min-height: 260px;
+    }
+    .row { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
+    .pill {
+      display: inline-block;
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: 999px;
+      background: #edf2ff;
+      color: var(--primary);
+      border: 1px solid #cfdbf6;
+    }
+    .box {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      background: #fff;
+      font-size: 12px;
+    }
+    .hero {
+      border: 1px solid #cdd9f4;
+      background: linear-gradient(135deg, #edf3ff, #f8fbff);
+      border-radius: 12px;
+      padding: 10px;
+      font-size: 12px;
+    }
+    .metric { font-size: 18px; font-weight: 700; }
+    .ok { color: var(--success); }
+    .warn { color: var(--warning); }
+    .risk { color: var(--risk); }
+    .stack { display: grid; gap: 8px; }
+    .dense .box { padding: 8px; }
+    .airy { gap: 14px; }
+    .split { grid-template-columns: 1.3fr 1fr; }
+    .footer {
+      padding: 14px 20px 24px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Teacher OS - Design Direction Mockups (Step 9)</h1>
+    <p>8 visual directions for teacher-first grading speed with calm parent clarity.</p>
+  </header>
+
+  <main class="grid">
+    <section class="card">
+      <h2>Direction 1 - Compact Queue First</h2>
+      <div class="mock dense">
+        <div class="hero"><strong>Grading Queue</strong> <span class="pill">22 pending</span></div>
+        <div class="row">
+          <div class="box">Submission #1492<br><span class="warn">Low confidence</span></div>
+          <div class="box">AI Score: <span class="metric">B-</span><br>Rationale inline</div>
+        </div>
+        <div class="box">Approve | Edit | Escalate</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Direction 2 - Calm Parent Ledger</h2>
+      <div class="mock airy">
+        <div class="hero">Academic Balance: <span class="ok">Improving</span></div>
+        <div class="stack">
+          <div class="box">+ Math Quiz: B -> B+</div>
+          <div class="box">- Attendance dip (1 event)</div>
+          <div class="box">Digest cadence: Weekly</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Direction 3 - Confidence Triage</h2>
+      <div class="mock">
+        <div class="row">
+          <div class="box">High confidence<br><span class="metric ok">16</span></div>
+          <div class="box">Needs review<br><span class="metric warn">6</span></div>
+        </div>
+        <div class="box">One-tap approve lane for high confidence</div>
+        <div class="box">Expanded rubric lane for flagged work</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Direction 4 - Split Evidence + Rubric</h2>
+      <div class="mock split">
+        <div class="box">Student image / evidence panel</div>
+        <div class="stack">
+          <div class="box">Rubric mapping</div>
+          <div class="box">AI rationale</div>
+          <div class="box">Teacher overrides</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Direction 5 - Student Growth Arc</h2>
+      <div class="mock airy">
+        <div class="hero">Consistency Tracker: <span class="ok">5-week streak</span></div>
+        <div class="row">
+          <div class="box">Trend line: +12%</div>
+          <div class="box">Focus area: Word problems</div>
+        </div>
+        <div class="box">Next action: 2 practice prompts</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Direction 6 - Admin Cohort Heatmap</h2>
+      <div class="mock">
+        <div class="hero">Org Snapshot: 3 cohorts at risk</div>
+        <div class="row">
+          <div class="box">Grade 5 Math <span class="risk">High</span></div>
+          <div class="box">Grade 6 Reading <span class="warn">Medium</span></div>
+        </div>
+        <div class="box">Action queue: PD, intervention, staffing</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Direction 7 - Mobile One-Hand Review</h2>
+      <div class="mock dense">
+        <div class="hero">Capture -> Review -> Approve</div>
+        <div class="box">Bottom action bar: Approve / Edit / Next</div>
+        <div class="box">Large tap targets + sticky status chips</div>
+        <div class="box">Completion toast: Approved and Shared</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Direction 8 - Explainability Emphasis</h2>
+      <div class="mock">
+        <div class="box"><strong>Why this score?</strong><br>2 rubric criteria met, 1 partial.</div>
+        <div class="box">Teacher note visible to parent as context</div>
+        <div class="box">Risk label includes trend + confidence explanation</div>
+      </div>
+    </section>
+  </main>
+
+  <div class="footer">
+    Compare directions for layout intuitiveness, interaction speed, visual density, and emotional tone alignment.
+  </div>
+</body>
+</html>
