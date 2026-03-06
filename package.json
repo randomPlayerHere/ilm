@@ -1,11 +1,20 @@
 {
   "name": "ilm",
-  "version": "1.0.0",
-  "main": "index.js",
+  "private": true,
+  "version": "0.1.0",
+  "description": "TeacherOS monorepo scaffold",
+  "packageManager": "pnpm@10.28.2",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "test": "node --test tests/scaffold.test.mjs && turbo run test",
+    "typecheck": "turbo run typecheck",
+    "verify:scaffold": "node --test tests/scaffold.test.mjs",
+    "verify:turbo-config": "node -e \"const fs=require('fs'); if(!fs.existsSync('turbo.json')) process.exit(1);\"",
+    "verify:workspace-scripts": "pnpm -r --if-present run lint && pnpm -r --if-present run test && pnpm -r --if-present run typecheck && pnpm -r --if-present run build"
   },
-  "author": "",
-  "license": "ISC",
-  "description": ""
+  "devDependencies": {
+    "turbo": "^2.5.6"
+  }
 }

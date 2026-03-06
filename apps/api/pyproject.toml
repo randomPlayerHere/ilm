@@ -1,0 +1,27 @@
+[project]
+name = "ilm-api"
+version = "0.1.0"
+description = "FastAPI service for TeacherOS"
+requires-python = ">=3.11"
+dependencies = [
+  "bcrypt>=4.1.3,<5.0.0",
+  "cryptography>=44.0.0,<46.0.0",
+  "fastapi>=0.115.0,<1.0.0",
+  "pydantic>=2.8.0,<3.0.0",
+  "pyjwt>=2.9.0,<3.0.0",
+  "uvicorn>=0.30.0,<1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.27.0,<1.0.0",
+  "pytest>=8.3.0,<9.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ilm]
+story = "1.6"
+notes = "Baseline safety controls configuration with org-scoped versioned defaults and authorization enforcement."

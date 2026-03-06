@@ -1,0 +1,92 @@
+# generated: 2026-03-05
+# project: ilm
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog -> in-progress: Automatically when first story is created (via create-story)
+#   - in-progress -> done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-03-05
+project: ilm
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  epic-1: in-progress
+  1-1-initialize-project-from-approved-starter-template: done
+  1-2-email-password-sign-in-for-organization-users: done
+  1-3-google-sign-in-for-organization-users: done
+  1-4-organization-and-user-lifecycle-administration: done
+  1-5-role-assignment-and-tenant-scoped-authorization-enforcement: done
+  1-6-baseline-safety-and-content-control-configuration: done
+  epic-1-retrospective: done
+
+  epic-2: backlog
+  2-1-generate-ai-draft-lesson-and-curriculum-content: backlog
+  2-2-edit-and-save-generic-and-student-specific-plans: backlog
+  2-3-capture-and-store-assignment-artifacts: backlog
+  2-4-submit-and-process-async-ai-grading-jobs: backlog
+  2-5-teacher-review-override-and-approval-gate: backlog
+  2-6-generate-weakness-based-practice-recommendations: backlog
+  epic-2-retrospective: optional
+
+  epic-3: backlog
+  3-1-linked-guardian-and-student-progress-access: backlog
+  3-2-outcome-explanations-and-trend-visualization: backlog
+  3-3-strength-weakness-indicators-and-next-step-guidance: backlog
+  3-4-parent-self-serve-notification-preferences: backlog
+  epic-3-retrospective: optional
+
+  epic-4: backlog
+  4-1-teacher-parent-in-app-messaging-threads: backlog
+  4-2-student-and-assignment-context-linking-in-messages: backlog
+  4-3-progress-event-alerts-to-parents: backlog
+  4-4-cadence-aware-notification-delivery-engine: backlog
+  epic-4-retrospective: optional
+
+  epic-5: backlog
+  5-1-cohort-trend-dashboard-by-grade-and-subject: backlog
+  5-2-segment-filters-for-organizational-analysis: backlog
+  5-3-communication-health-and-engagement-indicators: backlog
+  epic-5-retrospective: optional
+
+  epic-6: backlog
+  6-1-audit-logging-for-sensitive-platform-events: backlog
+  6-2-coppa-ferpa-aligned-access-and-disclosure-controls: backlog
+  6-3-data-minimization-and-protected-data-policy-enforcement: backlog
+  6-4-global-rbac-enforcement-for-protected-capabilities: backlog
+  epic-6-retrospective: optional
+
+  epic-7: backlog
+  7-1-organization-standards-profile-administration: backlog
+  7-2-google-classroom-integration-enablement-and-sync-boundaries: backlog
+  7-3-multi-organization-operational-administration-baseline: backlog
+  epic-7-retrospective: optional
