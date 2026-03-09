@@ -13,6 +13,9 @@ Implements identity + admin lifecycle baseline with:
 - `POST /admin/users/{user_id}/membership`
 - `PUT /admin/organizations/{org_id}/safety-controls`
 - `GET /admin/organizations/{org_id}/safety-controls`
+- `POST /courses/drafts/generate`
+- `GET /courses/drafts/{draft_id}`
+- `GET /courses/drafts`
 - `POST /admin/users/{user_id}/activate`
 - `POST /admin/users/{user_id}/deactivate`
 - `POST /admin/invitations/accept`
@@ -37,6 +40,7 @@ which is submitted to `POST /auth/google` as `id_token`.
 Admin lifecycle endpoints require `Authorization: Bearer <token>` with a JWT role claim of `admin`.
 Protected summary endpoint requires authenticated actor role of `admin` or `principal`, and actor org scope must match path org.
 Safety controls mutation endpoint requires admin role and same-org scope; read endpoint requires same-org role of `admin`, `principal`, or `teacher` and returns latest versioned org defaults.
+Course draft generation and retrieval endpoints require authenticated `teacher` role and same-org class ownership. Generated records are persisted as `draft` only (not published), with retryable `503` behavior for provider-unavailable generation failures. These drafts are intended as editable inputs for Story 2.2.
 
 ## Local Run
 

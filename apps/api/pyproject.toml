@@ -23,5 +23,5 @@ testpaths = ["tests"]
 pythonpath = ["."]
 
 [tool.ilm]
-story = "1.6"
-notes = "Baseline safety controls configuration with org-scoped versioned defaults and authorization enforcement."
+story = "2.1"
+notes = "Teacher-scoped AI lesson draft generation with draft-state persistence, tenant-safe class validation, and retryable failure semantics."

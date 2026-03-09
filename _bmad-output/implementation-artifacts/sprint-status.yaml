@@ -49,8 +49,8 @@ development_status:
   1-6-baseline-safety-and-content-control-configuration: done
   epic-1-retrospective: done
 
-  epic-2: backlog
-  2-1-generate-ai-draft-lesson-and-curriculum-content: backlog
+  epic-2: in-progress
+  2-1-generate-ai-draft-lesson-and-curriculum-content: done
   2-2-edit-and-save-generic-and-student-specific-plans: backlog
   2-3-capture-and-store-assignment-artifacts: backlog
   2-4-submit-and-process-async-ai-grading-jobs: backlog
