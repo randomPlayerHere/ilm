@@ -9,6 +9,7 @@ dependencies = [
   "fastapi>=0.115.0,<1.0.0",
   "pydantic>=2.8.0,<3.0.0",
   "pyjwt>=2.9.0,<3.0.0",
+  "python-multipart>=0.0.18,<1.0.0",
   "uvicorn>=0.30.0,<1.0.0",
 ]
 
@@ -23,5 +24,5 @@ testpaths = ["tests"]
 pythonpath = ["."]
 
 [tool.ilm]
-story = "2.1"
-notes = "Teacher-scoped AI lesson draft generation with draft-state persistence, tenant-safe class validation, and retryable failure semantics."
+story = "2.4"
+notes = "Async AI grading job submission and status polling. POST /grading/assignments/{id}/grading-jobs returns 202 with job_id; GET polls status. BackgroundTasks-driven stub AI processing with idempotency gate (artifact→job index). Fail-closed tenant authorization."

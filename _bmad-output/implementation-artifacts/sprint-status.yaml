@@ -51,9 +51,9 @@ development_status:
 
   epic-2: in-progress
   2-1-generate-ai-draft-lesson-and-curriculum-content: done
-  2-2-edit-and-save-generic-and-student-specific-plans: backlog
-  2-3-capture-and-store-assignment-artifacts: backlog
-  2-4-submit-and-process-async-ai-grading-jobs: backlog
+  2-2-edit-and-save-generic-and-student-specific-plans: done
+  2-3-capture-and-store-assignment-artifacts: done
+  2-4-submit-and-process-async-ai-grading-jobs: review
   2-5-teacher-review-override-and-approval-gate: backlog
   2-6-generate-weakness-based-practice-recommendations: backlog
   epic-2-retrospective: optional
