@@ -93,6 +93,22 @@ class InMemoryAuthRepository:
                 role="teacher",
                 status="inactive",
             ),
+            "parent@example.com": UserRecord(
+                user_id="usr_parent_1",
+                org_id="org_demo_1",
+                email="parent@example.com",
+                password_hash=hash_password("correct-horse-battery-staple"),
+                role="parent",
+                status="active",
+            ),
+            "student@example.com": UserRecord(
+                user_id="usr_student_1",
+                org_id="org_demo_1",
+                email="student@example.com",
+                password_hash=hash_password("correct-horse-battery-staple"),
+                role="student",
+                status="active",
+            ),
         }
         cls._orgs = {
             "org_demo_1": OrganizationRecord(

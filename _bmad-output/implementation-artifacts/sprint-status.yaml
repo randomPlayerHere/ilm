@@ -56,7 +56,7 @@ development_status:
   2-4-submit-and-process-async-ai-grading-jobs: done
   2-5-teacher-review-override-and-approval-gate: done
   2-6-generate-weakness-based-practice-recommendations: done
-  epic-2-retrospective: optional
+  epic-2-retrospective: done
 
   epic-3: backlog
   3-1-linked-guardian-and-student-progress-access: backlog
