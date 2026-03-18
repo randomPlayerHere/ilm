@@ -1,6 +1,10 @@
 ---
-stepsCompleted: ['step-01-init', 'step-02-discovery', 'step-02b-vision', 'step-02c-executive-summary', 'step-03-success', 'step-04-journeys', 'step-05-domain', 'step-06-innovation', 'step-01b-continue', 'step-01b-continue', 'step-07-project-type', 'step-08-scoping', 'step-09-functional', 'step-10-nonfunctional', 'step-11-polish', 'step-11-complete', 'step-12-complete']
+stepsCompleted: ['step-01-init', 'step-02-discovery', 'step-02b-vision', 'step-02c-executive-summary', 'step-03-success', 'step-04-journeys', 'step-05-domain', 'step-06-innovation', 'step-01b-continue', 'step-01b-continue', 'step-07-project-type', 'step-08-scoping', 'step-09-functional', 'step-10-nonfunctional', 'step-11-polish', 'step-11-complete', 'step-12-complete', 'step-e-01-discovery', 'step-e-02-review', 'step-e-03-edit']
 date: '2025-03-01'
+lastEdited: '2026-03-19'
+editHistory:
+  - date: '2026-03-19'
+    changes: 'Reframed product as mobile-centric (React Native) with companion web interface. Updated Executive Summary, Product Scope, Technical Architecture, User Journeys, Functional Requirements preamble, Non-Functional Requirements, and Project Scoping to explicitly define a fully usable mobile application as the primary deliverable.'
 inputDocuments: ['_bmad-output/planning-artifacts/product-brief-ilm-2025-03-01.md', '_bmad-output/brainstorming/brainstorming-session-2025-03-01.md']
 workflowType: 'prd'
 classification:
@@ -19,11 +23,11 @@ classification:
 
 ## Executive Summary
 
-**Teacher OS** is an AI-driven K-12 education platform built around one question: *"Is my child improving?"* It serves teachers (grading and planning), parents (transparency and benchmarks), students (growth and "level up" experience), and principals/org managers (cohort-level insight). The product addresses overloaded teacher-parent communication, lack of clear progress answers, and tools that show grades and attendance but not *why* or *how* students are improving. Target users are K-12 schools, districts, tutoring centers, and families; the platform supports the full spectrum of learners, including special needs and gifted.
+**Teacher OS** is a mobile-centric AI-driven K-12 education application built around one question: *"Is my child improving?"* It delivers a React Native mobile app as the primary interface for teachers (grading and planning), parents (transparency and benchmarks), and students (growth and "level up" experience), with a companion web interface for principals/org managers (cohort-level insight) and administrators. The product addresses overloaded teacher-parent communication, lack of clear progress answers, and tools that show grades and attendance but not *why* or *how* students are improving. Target users are K-12 schools, districts, tutoring centers, and families; the platform supports the full spectrum of learners, including special needs and gifted.
 
 ### What Makes This Special
 
-The product is explicitly designed to answer *"Is my child improving?"* with transparency (scores + explanations + strengths/weaknesses + longitudinal view), not just grade display. Teachers use the app to photograph student work and get AI-assisted grading; parents and students get self-serve access so they're not blocked on teacher availability. Differentiators: AI-assisted grading from photos; self-serve parent and student dashboards; full-spectrum equity (accommodations and enrichment); and a portable student record/portfolio. Core insight: parent–teacher communication works when it delivers that answer via transparency and self-serve access—not only scores and notifications.
+The product is explicitly designed to answer *"Is my child improving?"* with transparency (scores + explanations + strengths/weaknesses + longitudinal view), not just grade display. Teachers use the app to photograph student work and get AI-assisted grading; parents and students get self-serve access so they're not blocked on teacher availability. Differentiators: AI-assisted grading from photos; self-serve parent and student dashboards; full-spectrum equity (accommodations and enrichment); and a portable student record/portfolio. Core insight: parent–teacher communication works when it delivers that answer via transparency and self-serve access—not only scores and notifications. The product is delivered as a mobile-first application (React Native) so teachers can grade from anywhere with their phone camera, parents check progress on the go, and students engage with growth views on their own devices. A companion web interface serves administrative and organizational oversight needs.
 
 ## Project Classification
 
@@ -77,7 +81,9 @@ The product is explicitly designed to answer *"Is my child improving?"* with tra
 - **AI grading:** Teacher captures work in-app (e.g. photo); AI assists grading; teacher reviews/approves; optional auto-generated practice for weak areas.
 - **Self-serve access:** Parent and student dashboards so they can see progress without going through the teacher every time.
 - **Course/curriculum:** Dynamic curriculum and lesson/assessment planning; teacher chat to create generic and student-specific plans using student data.
-- **Platform baseline:** Auth (email/password + Google sign-in), role-based access, global admin for users, roles, orgs, content, and safety controls; one org-level dashboard (principal/org manager) with overview and cohort metrics.
+- **Mobile application (primary):** React Native mobile app delivering all teacher, parent, and student workflows as usable mobile screens with native device capabilities (camera for assignment capture, push notifications).
+- **Companion web interface:** Browser-based interface for principal/org manager dashboards and admin management workflows.
+- **Platform baseline:** Auth (email/password + Google sign-in), role-based access; mobile app as primary delivery surface for teacher, parent, and student roles; companion web interface for admin and principal/org manager roles; global admin for users, roles, orgs, content, and safety controls.
 
 ### Growth (Post-MVP)
 
@@ -100,7 +106,7 @@ The product is explicitly designed to answer *"Is my child improving?"* with tra
 
 **Opening:** Maria has 28 students. She spends hours grading and answering parent emails and calls ("What did my child get?" "Why that grade?"). She's behind on planning and feels like a bottleneck.
 
-**Rising action:** She opens Teacher OS, links her class, and starts using the in-app camera to photograph homework and tests. The AI suggests scores and feedback; she adjusts and approves. She creates a generic lesson plan via teacher chat ("6th grade math, struggles with multiplication") and a student-specific plan for a struggling student, with his data pulled in. She sends a short in-app message to a parent, linked to that student and assignment.
+**Rising action:** She opens the Teacher OS app on her phone, links her class, and starts using the in-app camera to photograph homework and tests. The AI suggests scores and feedback; she adjusts and approves. She creates a generic lesson plan via teacher chat ("6th grade math, struggles with multiplication") and a student-specific plan for a struggling student, with his data pulled in. She sends a short in-app message to a parent, linked to that student and assignment.
 
 **Climax:** A parent messages asking why their child got a B. Instead of writing a long email, Maria points them to the dashboard: scores, rubric, and AI explanation are already there. The parent replies: "I see it now. Thanks." Fewer calls and emails; grading and planning feel manageable.
 
@@ -110,7 +116,7 @@ The product is explicitly designed to answer *"Is my child improving?"* with tra
 
 **Opening:** James worries about his daughter but doesn't know how she's really doing. He doesn't want to bug the teacher; report cards feel too late and too vague.
 
-**Rising action:** He signs in with Google, lands on the parent dashboard, and sees his daughter's recent scores with short explanations ("Struggled on multi-step word problems; strong on computation"). He turns on a weekly digest and gets a notification when a test grade is posted. He checks the longitudinal view and sees an upward trend in math. He sends the teacher one in-app message to ask about extra practice.
+**Rising action:** He signs in with Google on the mobile app and sees his daughter's recent scores with short explanations ("Struggled on multi-step word problems; strong on computation"). He turns on a weekly digest and gets a notification when a test grade is posted. He checks the longitudinal view and sees an upward trend in math. He sends the teacher one in-app message to ask about extra practice.
 
 **Climax:** He realizes he can answer "Is she improving?" himself. He feels informed and less anxious; when he talks to his daughter, he can be specific ("Your teacher said to focus on word problems—want to try a few together?").
 
@@ -120,7 +126,7 @@ The product is explicitly designed to answer *"Is my child improving?"* with tra
 
 **Opening:** Sam finds grades stressful and doesn't really know what to work on. It feels like the adults are talking about him, not with him.
 
-**Rising action:** He logs into his student view and sees his progress in a "level up" style: growth over time, strengths, and one or two clear areas to improve. He gets "secret tips" (e.g. hints or practice suggestions) tied to his weak spots. He sees his own improvement trail and feels proud.
+**Rising action:** He opens the app and sees his progress in a "level up" style: growth over time, strengths, and one or two clear areas to improve. He gets "secret tips" (e.g. hints or practice suggestions) tied to his weak spots. He sees his own improvement trail and feels proud.
 
 **Climax:** He uses a tip before the next quiz and does better. He tells his dad, "I knew what to practice." He feels the app is on his side.
 
@@ -130,7 +136,7 @@ The product is explicitly designed to answer *"Is my child improving?"* with tra
 
 **Opening:** Dr. Chen has to decide where to put limited PD and hiring. She gets anecdotes and spreadsheets, not a clear picture of where the school struggles.
 
-**Rising action:** She opens the org dashboard and sees cohort metrics: e.g. "Most students weak in fractions in 5th–6th grade" and trends over time. She filters by grade and subject, sees which teachers have the heaviest parent-message load, and reviews summary engagement (e.g. parent dashboard use). She spots a pattern before it becomes a crisis.
+**Rising action:** She opens the companion web interface and sees cohort metrics: e.g. "Most students weak in fractions in 5th–6th grade" and trends over time. She filters by grade and subject, sees which teachers have the heaviest parent-message load, and reviews summary engagement (e.g. parent dashboard use). She spots a pattern before it becomes a crisis.
 
 **Climax:** She uses the data in a staffing meeting: "We need to strengthen math in 5th–6th. Here's the evidence." She approves a PD focus and a hire with confidence.
 
@@ -140,7 +146,7 @@ The product is explicitly designed to answer *"Is my child improving?"* with tra
 
 **Opening:** Alex needs to onboard schools, manage roles (teachers, parents, students, principals), keep content and safety settings correct, and fix access issues.
 
-**Rising action:** Alex logs into the global admin dashboard, creates an org and invites users, assigns roles (teacher, parent, student, principal), and configures safety and content policies. When a parent can't see their child, Alex checks role and org membership and fixes the link. Alex audits who has access to what and adjusts as needed.
+**Rising action:** Alex logs into the admin web interface, creates an org and invites users, assigns roles (teacher, parent, student, principal), and configures safety and content policies. When a parent can't see their child, Alex checks role and org membership and fixes the link. Alex audits who has access to what and adjusts as needed.
 
 **Climax:** A new school goes live in a day: org created, users invited, roles set. A reported issue is resolved by correcting one permission.
 
@@ -222,13 +228,15 @@ Teacher OS is a multi-role B2B SaaS platform for educational organizations (scho
 
 ### Technical Architecture Considerations
 
-The system uses AWS-hosted PostgreSQL (RDS) and must enforce tenant/org isolation on every protected query. Current requirements strongly imply a shared-database architecture with strict organization scoping at the application and query layers, while preserving the option to evolve to stronger physical isolation if enterprise requirements demand it.
+The system delivers a **React Native mobile application** as the primary client for teachers, parents, and students, and a **companion web interface** for principals/org managers and administrators. Both clients communicate with a shared backend API layer. The backend uses AWS-hosted PostgreSQL (RDS) and must enforce tenant/org isolation on every protected query. Current requirements strongly imply a shared-database architecture with strict organization scoping at the application and query layers, while preserving the option to evolve to stronger physical isolation if enterprise requirements demand it.
 
 Core architecture constraints:
 - Every core record is tenant-owned (`org_id`) per SRS DR-001.
 - Tenant isolation is mandatory for all protected access paths per SRS FR-004.
 - Sensitive workloads (e.g., AI grading jobs) can run asynchronously but must preserve org-scoped data boundaries.
 - Auditability is required for sensitive mutations and accesses.
+- Mobile app (React Native) is the primary delivery surface; companion web interface serves admin and org-level oversight roles.
+- Backend exposes a well-defined API consumed by both mobile and web clients.
 
 ### Tenant Model
 
@@ -326,7 +334,8 @@ Focus on one undeniable outcome: parents and teachers can reliably answer "Is th
 
 **Resource Requirements:**
 - Product/Delivery: 1 PM, 1 designer (fractional acceptable), 1 EM/tech lead
-- Engineering: 3-5 full-stack engineers, 1 ML engineer (or ML-capable backend), 1 QA/SDET
+- Engineering: 2-3 React Native mobile engineers, 1-2 backend/API engineers, 1 ML engineer (or ML-capable backend), 1 QA/SDET
+- Web: 1 frontend engineer for companion web interface (admin/principal)
 - Platform/Security: shared ownership with tech lead + backend engineer
 - Total lean team: ~6-9 contributors
 
@@ -349,6 +358,9 @@ Focus on one undeniable outcome: parents and teachers can reliably answer "Is th
 - Audit logging for grade changes, role changes, sensitive access.
 - COPPA/FERPA-aligned data handling and minimization.
 - AWS baseline platform (RDS, S3, async jobs).
+- React Native mobile app delivering all teacher, parent, and student workflows as complete, usable screens.
+- Companion web interface for admin management and principal/org-level dashboards.
+- Shared backend API layer serving both mobile and web clients.
 
 ### Post-MVP Features
 
@@ -384,6 +396,8 @@ Focus on one undeniable outcome: parents and teachers can reliably answer "Is th
 ---
 
 ## Functional Requirements
+
+All functional requirements below describe user-facing capabilities delivered through the **React Native mobile application** (teacher, parent, student roles) or the **companion web interface** (principal/org manager, admin roles), backed by a shared API layer. Each FR represents a complete, usable feature — not just an API endpoint.
 
 ### Identity, Access, and Tenant Administration
 
@@ -457,7 +471,7 @@ Focus on one undeniable outcome: parents and teachers can reliably answer "Is th
 
 ### Performance
 
-- NFR1: 95% of authenticated dashboard page loads (teacher, parent, student, principal) must complete within 2.0 seconds under normal operating load.
+- NFR1: 95% of authenticated screen loads in the mobile app (teacher, parent, student) and companion web interface (principal, admin) must complete within 2.0 seconds under normal operating load.
 - NFR2: 95% of core interactive actions (open student profile, open class analytics, open message thread) must complete within 1.5 seconds under normal load.
 - NFR3: 95% of teacher message send actions must complete within 1.0 second, excluding downstream notification delivery latency.
 - NFR4: 95% of AI grading job submissions must acknowledge receipt within 3 seconds.
@@ -488,9 +502,9 @@ Focus on one undeniable outcome: parents and teachers can reliably answer "Is th
 
 ### Accessibility
 
-- NFR20: All MVP web workflows must conform to WCAG 2.1 Level AA, validated by automated accessibility scans and manual accessibility audit before each production release.
-- NFR21: Core user journeys (teacher grading approval, parent progress review, student progress view, admin user management) must be fully keyboard accessible.
-- NFR22: 100% of production UI screens in MVP scope must pass WCAG 2.1 AA checks for color contrast, focus indicators, and semantic labeling in release-gate accessibility audits.
+- NFR20: All MVP workflows across mobile app and companion web interface must conform to WCAG 2.1 Level AA, validated by automated accessibility scans and manual accessibility audit before each production release.
+- NFR21: Core user journeys on the companion web interface (admin user management, principal dashboards) must be fully keyboard accessible. Mobile app journeys must follow platform accessibility guidelines (iOS/Android).
+- NFR22: 100% of production UI screens across mobile app and companion web interface in MVP scope must pass WCAG 2.1 AA checks for color contrast, focus indicators, and semantic labeling in release-gate accessibility audits.
 
 ### Integration and Interoperability
 
