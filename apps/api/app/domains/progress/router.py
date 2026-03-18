@@ -9,6 +9,8 @@ from app.domains.progress.schemas import (
     ApprovedGradeResponse,
     ConfirmedRecommendationListResponse,
     ConfirmedRecommendationResponse,
+    TopicInsightListResponse,
+    TopicInsightResponse,
 )
 from app.domains.students.repository import InMemoryStudentsRepository
 
@@ -98,3 +100,31 @@ async def get_student_recommendations(
         for r in records
     ]
     return ConfirmedRecommendationListResponse(recommendations=recommendations)
+
+
+@router.get(
+    "/students/{student_id}/topic-insights",
+    response_model=TopicInsightListResponse,
+)
+async def get_student_topic_insights(
+    student_id: str,
+    actor: ActorContext = Depends(require_authenticated_actor),
+) -> TopicInsightListResponse:
+    _require_parent_or_student(actor, student_id, _students_repo, _grading_repo)
+    insights, has_sufficient_data = _grading_repo.list_topic_insights_for_student(
+        student_id, actor.org_id
+    )
+    return TopicInsightListResponse(
+        topic_insights=[
+            TopicInsightResponse(
+                topic=i.topic,
+                status=i.status,
+                weakness_signal=i.weakness_signal,
+                guidance=i.guidance,
+                rec_job_id=i.rec_job_id,
+                confirmed_at=i.confirmed_at,
+            )
+            for i in insights
+        ],
+        has_sufficient_data=has_sufficient_data,
+    )

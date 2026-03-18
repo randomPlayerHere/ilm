@@ -61,11 +61,11 @@ development_status:
   epic-3: in-progress
   3-1-linked-guardian-and-student-progress-access: done
   3-2-outcome-explanations-and-trend-visualization: done
-  3-3-strength-weakness-indicators-and-next-step-guidance: backlog
-  3-4-parent-self-serve-notification-preferences: backlog
+  3-3-strength-weakness-indicators-and-next-step-guidance: done
+  3-4-parent-self-serve-notification-preferences: done
   epic-3-retrospective: optional
 
-  epic-4: backlog
+  epic-4: in-progress
   4-1-teacher-parent-in-app-messaging-threads: backlog
   4-2-student-and-assignment-context-linking-in-messages: backlog
   4-3-progress-event-alerts-to-parents: backlog

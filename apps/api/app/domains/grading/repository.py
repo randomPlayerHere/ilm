@@ -120,6 +120,16 @@ class ConfirmedRecommendationRecord:
 
 
 @dataclass(frozen=True)
+class TopicInsightRecord:
+    topic: str
+    status: str              # always "weakness" in MVP
+    weakness_signal: str
+    guidance: str            # from topics[].suggestion
+    rec_job_id: str          # for client deep-linking
+    confirmed_at: str        # ISO 8601; used for de-duplication ordering
+
+
+@dataclass(frozen=True)
 class ApprovedGradeRecord:
     job_id: str
     artifact_id: str
@@ -574,3 +584,39 @@ class InMemoryGradingRepository:
                 continue
             results.append(rec)
         return results
+
+    def list_topic_insights_for_student(self, student_id: str, org_id: str) -> tuple[list[TopicInsightRecord], bool]:
+        # Sufficient-data gate: any approved grade for this student+org?
+        has_grade = any(
+            (job_id := self.__class__._artifact_job_index.get(a.artifact_id)) is not None
+            and self.__class__._grade_approvals.get(job_id) is not None
+            for a in self.__class__._artifacts.values()
+            if a.student_id == student_id and a.org_id == org_id
+        )
+        if not has_grade:
+            return [], False
+
+        # Reuse existing org-isolation logic — do NOT duplicate it inline
+        recs = self.list_confirmed_recommendations_for_student(student_id, org_id)
+
+        # Flatten topics; keep latest confirmed_at per topic (de-duplicate)
+        # Use datetime.fromisoformat() to avoid mixed-offset string misordering (per Story 3.2 lesson)
+        # Secondary key rec_job_id ensures stable sort when timestamps are equal
+        recs_sorted = sorted(recs, key=lambda r: (datetime.fromisoformat(r.confirmed_at), r.rec_job_id), reverse=True)
+        seen_topics: set[str] = set()
+        insights: list[TopicInsightRecord] = []
+        for rec in recs_sorted:
+            for entry in rec.topics:
+                topic = entry.get("topic", "")
+                if not topic or topic in seen_topics:
+                    continue
+                seen_topics.add(topic)
+                insights.append(TopicInsightRecord(
+                    topic=topic,
+                    status="weakness",
+                    weakness_signal=entry.get("weakness_signal", ""),
+                    guidance=entry.get("suggestion", ""),
+                    rec_job_id=rec.rec_job_id,
+                    confirmed_at=rec.confirmed_at,
+                ))
+        return insights, True

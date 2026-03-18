@@ -20,6 +20,20 @@ class ApprovedGradeListResponse(BaseModel):
     grades: list[ApprovedGradeResponse]
 
 
+class TopicInsightResponse(BaseModel):
+    topic: str
+    status: str
+    weakness_signal: str
+    guidance: str
+    rec_job_id: str
+    confirmed_at: str
+
+
+class TopicInsightListResponse(BaseModel):
+    topic_insights: list[TopicInsightResponse]
+    has_sufficient_data: bool
+
+
 class ConfirmedRecommendationResponse(BaseModel):
     rec_job_id: str
     job_id: str

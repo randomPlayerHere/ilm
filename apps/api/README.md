@@ -34,6 +34,8 @@ Implements identity + admin lifecycle baseline with:
 - `GET /grading/assignments/{assignment_id}/grading-jobs/{job_id}/recommendation-jobs/{rec_job_id}/confirm`
 - `GET /progress/students/{student_id}/grades`
 - `GET /progress/students/{student_id}/recommendations`
+- `GET /notifications/preferences`
+- `PUT /notifications/preferences`
 - `POST /admin/users/{user_id}/activate`
 - `POST /admin/users/{user_id}/deactivate`
 - `POST /admin/invitations/accept`

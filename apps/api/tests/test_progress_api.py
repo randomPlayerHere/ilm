@@ -778,3 +778,277 @@ def test_grades_endpoint_responds_within_max_700ms() -> None:
     asyncio.run(measure())
     max_ms = max(latencies) * 1000
     assert max_ms <= 700, f"max latency {max_ms:.1f} ms exceeds 700 ms NFR-001 threshold"
+
+
+# ---------------------------------------------------------------------------
+# Tests 24–29: Topic Insights endpoint (Story 3.3)
+# AC1: endpoint accessible to parent + student; teacher/unauthenticated rejected
+# AC2: weakness topics with guidance derived from confirmed recommendations
+# AC3: de-duplication — latest confirmed_at per topic wins
+# AC4: has_sufficient_data gate — false when no approved grades exist
+# AC5: access control unchanged (existing guard reused)
+# AC6: performance target compliance
+# ---------------------------------------------------------------------------
+
+
+def test_topic_insights_returns_weakness_with_guidance() -> None:
+    """Test 24: Happy path — weakness topic with guidance; both parent and student roles."""
+    reset_progress_state_for_tests()
+    reset_auth_state_for_tests()
+    _create_confirmed_recommendation_pipeline()
+    _create_guardian_link()
+
+    async def scenario() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            # Parent can access topic insights for linked student
+            r = await client.get(
+                "/progress/students/usr_student_1/topic-insights",
+                headers=_parent_headers(),
+            )
+            assert r.status_code == 200
+            body = r.json()
+            assert body["has_sufficient_data"] is True
+            assert len(body["topic_insights"]) == 1
+            insight = body["topic_insights"][0]
+            assert insight["topic"] == "Algebra"
+            assert insight["status"] == "weakness"
+            assert insight["weakness_signal"] == "low score"
+            assert insight["guidance"] == "Practice more"
+            assert "rec_job_id" in insight
+            assert "confirmed_at" in insight
+
+            # Student can also access their own topic insights
+            r = await client.get(
+                "/progress/students/usr_student_1/topic-insights",
+                headers=_student_headers(),
+            )
+            assert r.status_code == 200
+            assert r.json()["has_sufficient_data"] is True
+
+    asyncio.run(scenario())
+
+
+def test_topic_insights_insufficient_data_when_no_grades() -> None:
+    """Test 25: has_sufficient_data false when repo is empty (no grades, no recs).
+
+    Do NOT use _create_confirmed_recommendation_pipeline here — it internally
+    calls _create_approved_grade_pipeline which creates a grade and defeats the test.
+    """
+    reset_progress_state_for_tests()
+    reset_auth_state_for_tests()
+    _create_guardian_link()  # auth only — no grades, no recs
+
+    async def scenario() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            r = await client.get(
+                "/progress/students/usr_student_1/topic-insights",
+                headers=_parent_headers(),
+            )
+            assert r.status_code == 200
+            body = r.json()
+            assert body["has_sufficient_data"] is False
+            assert body["topic_insights"] == []
+
+    asyncio.run(scenario())
+
+
+def test_topic_insights_deduplication_keeps_latest_rec() -> None:
+    """Test 26: Two recommendations with same topic — only the newer confirmed_at wins."""
+    reset_progress_state_for_tests()
+    reset_auth_state_for_tests()
+    repo = InMemoryGradingRepository()
+
+    # Two distinct approved grade pipelines → two distinct job_ids
+    job_id_1, _, assignment_id_1 = _create_approved_grade_pipeline()
+    job_id_2, _, assignment_id_2 = _create_approved_grade_pipeline()
+
+    # Rec 1: older confirmed_at — topic "Algebra"
+    rec_job_1 = repo.create_recommendation_job(
+        job_id=job_id_1,
+        assignment_id=assignment_id_1,
+        org_id="org_demo_1",
+        teacher_user_id="usr_teacher_1",
+        student_id="usr_student_1",
+    )
+    repo.upsert_confirmed_recommendation(
+        rec_job_id=rec_job_1.rec_job_id,
+        job_id=job_id_1,
+        student_id="usr_student_1",
+        topics=[{"topic": "Algebra", "suggestion": "Old guidance", "weakness_signal": "old signal"}],
+        confirmed_by="usr_teacher_1",
+        confirmed_at="2024-01-01T00:00:00+00:00",
+    )
+
+    # Rec 2: newer confirmed_at — same topic "Algebra"
+    rec_job_2 = repo.create_recommendation_job(
+        job_id=job_id_2,
+        assignment_id=assignment_id_2,
+        org_id="org_demo_1",
+        teacher_user_id="usr_teacher_1",
+        student_id="usr_student_1",
+    )
+    repo.upsert_confirmed_recommendation(
+        rec_job_id=rec_job_2.rec_job_id,
+        job_id=job_id_2,
+        student_id="usr_student_1",
+        topics=[{"topic": "Algebra", "suggestion": "New guidance", "weakness_signal": "new signal"}],
+        confirmed_by="usr_teacher_1",
+        confirmed_at="2024-02-01T00:00:00+00:00",
+    )
+
+    _create_guardian_link()
+
+    async def scenario() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            r = await client.get(
+                "/progress/students/usr_student_1/topic-insights",
+                headers=_parent_headers(),
+            )
+            assert r.status_code == 200
+            body = r.json()
+            assert len(body["topic_insights"]) == 1                                     # deduplicated
+            assert body["topic_insights"][0]["guidance"] == "New guidance"               # newer rec wins
+            assert body["topic_insights"][0]["confirmed_at"] == "2024-02-01T00:00:00+00:00"
+
+    asyncio.run(scenario())
+
+
+def test_topic_insights_access_control() -> None:
+    """Test 27: Teacher → 403; unauthenticated → 401; wrong student (role mismatch) → 403."""
+    reset_progress_state_for_tests()
+    reset_auth_state_for_tests()
+
+    async def scenario() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            # Teacher role is not parent or student → 403
+            r = await client.get(
+                "/progress/students/usr_student_1/topic-insights",
+                headers=_teacher_headers(),
+            )
+            assert r.status_code == 403
+
+            # Unauthenticated → 401
+            r = await client.get("/progress/students/usr_student_1/topic-insights")
+            assert r.status_code == 401
+
+            # Student role but wrong user_id → 403 (usr_teacher_1 token with student role)
+            r = await client.get(
+                "/progress/students/usr_student_1/topic-insights",
+                headers=_wrong_student_headers(),
+            )
+            assert r.status_code == 403
+
+    asyncio.run(scenario())
+
+
+def test_topic_insights_org_isolation() -> None:
+    """Test 28: Parent in org_demo_1 has explicit guardian link to stu_other_org_1 (org_other_1) → 404.
+
+    Creates a cross-org guardian link (mirrors tests 19/20) so the defense-in-depth org check
+    at router._require_parent_or_student (lines 46-48) is the one that returns 404, not the
+    missing-link check. Validates that the org isolation guard fires even when a link exists.
+    """
+    reset_progress_state_for_tests()
+    reset_auth_state_for_tests()
+    _create_guardian_link(student_id="stu_other_org_1")  # cross-org link — exercises defense-in-depth check
+
+    async def scenario() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            r = await client.get(
+                "/progress/students/stu_other_org_1/topic-insights",
+                headers=_parent_headers(),
+            )
+            assert r.status_code == 404
+
+    asyncio.run(scenario())
+
+
+def test_topic_insights_empty_but_sufficient() -> None:
+    """Test 29: Approved grade exists but no confirmed recommendations → has_sufficient_data true, empty list."""
+    reset_progress_state_for_tests()
+    reset_auth_state_for_tests()
+    _create_approved_grade_pipeline()  # grade only, no recommendation
+    _create_guardian_link()
+
+    async def scenario() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            r = await client.get(
+                "/progress/students/usr_student_1/topic-insights",
+                headers=_parent_headers(),
+            )
+            assert r.status_code == 200
+            body = r.json()
+            assert body["has_sufficient_data"] is True
+            assert body["topic_insights"] == []
+
+    asyncio.run(scenario())
+
+
+# ---------------------------------------------------------------------------
+# Test 30: AC6 performance contract — topic-insights endpoint p95 ≤ 700 ms (NFR-001)
+# ---------------------------------------------------------------------------
+
+
+def test_topic_insights_endpoint_responds_within_max_700ms() -> None:
+    """AC6: NFR-001 requires p95 ≤ 700 ms for student read endpoints.
+
+    Mirrors Test 23 for the grades endpoint. Runs 5 warm-up requests (discarded)
+    then 20 measured requests. Asserts max observed latency stays under 700 ms —
+    a conservative proxy for p95 with this sample size.
+    """
+    reset_progress_state_for_tests()
+    reset_auth_state_for_tests()
+    _create_confirmed_recommendation_pipeline()
+    latencies: list[float] = []
+
+    async def measure() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            for _ in range(5):
+                await client.get(
+                    "/progress/students/usr_student_1/topic-insights",
+                    headers=_student_headers(),
+                )
+            for _ in range(20):
+                start = time.perf_counter()
+                resp = await client.get(
+                    "/progress/students/usr_student_1/topic-insights",
+                    headers=_student_headers(),
+                )
+                latencies.append(time.perf_counter() - start)
+                assert resp.status_code == 200
+
+    asyncio.run(measure())
+    max_ms = max(latencies) * 1000
+    assert max_ms <= 700, f"max latency {max_ms:.1f} ms exceeds 700 ms NFR-001 threshold"
+
+
+# ---------------------------------------------------------------------------
+# Test 31: AC5 student role org isolation for topic-insights endpoint
+# ---------------------------------------------------------------------------
+
+
+def test_topic_insights_org_isolation_repo_layer() -> None:
+    """AC5: topic-insights repo layer org isolation — mirrors test_org_isolation_repo_layer (Test 7).
+
+    stu_other_org_1 is seeded in org_other_1. Querying list_topic_insights_for_student
+    with org_demo_1 returns ([], False) — no approved grades exist for that student
+    in org_demo_1, so the sufficient-data gate fires correctly.
+
+    The auth layer (require_authenticated_actor) validates org_id from JWT against the
+    stored user org, preventing cross-org token manipulation over HTTP. This repo-layer
+    test validates the isolation logic directly, consistent with Test 7 for grades.
+    """
+    reset_progress_state_for_tests()
+    reset_auth_state_for_tests()
+    repo = InMemoryGradingRepository()
+    # stu_other_org_1 is in org_other_1 — querying with org_demo_1 finds no approved grades
+    insights, has_sufficient_data = repo.list_topic_insights_for_student("stu_other_org_1", "org_demo_1")
+    assert insights == []
+    assert has_sufficient_data is False
