@@ -12,6 +12,12 @@ yarn-error.log*
 .env.*
 !.env.example
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
 # OS/editor noise
 .DS_Store
 Thumbs.db

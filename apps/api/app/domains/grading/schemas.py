@@ -72,3 +72,92 @@ class GradingJobWithResultResponse(BaseModel):
     submitted_at: str
     completed_at: str | None
     result: GradingResultResponse | None
+    is_approved: bool
+
+
+class GradeApprovalRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    approved_score: Annotated[str, StringConstraints(min_length=1, max_length=50)]
+    approved_feedback: Annotated[str, StringConstraints(min_length=1, max_length=2000)]
+
+
+class GradeApprovalResponse(BaseModel):
+    job_id: str
+    approved_score: str
+    approved_feedback: str
+    approver_user_id: str
+    approved_at: str
+    version: int
+
+
+class GradeVersionResponse(BaseModel):
+    job_id: str
+    version: int
+    approved_score: str
+    approved_feedback: str
+    editor_user_id: str
+    edited_at: str
+    is_approved: bool
+
+
+class GradeVersionListResponse(BaseModel):
+    versions: list[GradeVersionResponse]
+
+
+class RecommendationTopicItem(BaseModel):
+    topic: str
+    suggestion: str
+    weakness_signal: str
+
+
+class RecommendationTopicItemRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    topic: Annotated[str, StringConstraints(min_length=1, max_length=100)]
+    suggestion: Annotated[str, StringConstraints(min_length=1, max_length=1000)]
+
+
+class RecommendationJobResponse(BaseModel):
+    rec_job_id: str
+    job_id: str
+    assignment_id: str
+    student_id: str
+    status: str
+    attempt_count: int
+    submitted_at: str
+    completed_at: str | None
+
+
+class RecommendationResultResponse(BaseModel):
+    rec_job_id: str
+    topics: list[RecommendationTopicItem]
+    generated_at: str
+
+
+class RecommendationJobWithResultResponse(BaseModel):
+    rec_job_id: str
+    job_id: str
+    assignment_id: str
+    student_id: str
+    status: str
+    attempt_count: int
+    submitted_at: str
+    completed_at: str | None
+    result: RecommendationResultResponse | None
+    is_confirmed: bool
+
+
+class ConfirmRecommendationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    topics: list[RecommendationTopicItemRequest]
+
+
+class ConfirmedRecommendationResponse(BaseModel):
+    rec_job_id: str
+    job_id: str
+    student_id: str
+    topics: list[RecommendationTopicItem]
+    confirmed_by: str
+    confirmed_at: str

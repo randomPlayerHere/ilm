@@ -3,11 +3,18 @@ from __future__ import annotations
 import pytest
 
 from app.domains.grading.repository import InMemoryGradingRepository
-from app.domains.grading.service import ArtifactFormatError, GradingAccessError, GradingService
+from app.domains.grading.service import (
+    ArtifactFormatError,
+    GradingAccessError,
+    GradingProcessError,
+    GradingService,
+    GradingStateError,
+)
 
 
 def setup_function() -> None:
     InMemoryGradingRepository.reset_state()
+    GradingService._fail_on_job_ids.clear()
 
 
 def _make_service() -> GradingService:
@@ -687,4 +694,835 @@ def test_get_grading_job_status_cross_tenant_forbidden() -> None:
             actor_org_id="org_demo_1",
             assignment_id=other_assignment.assignment_id,
             job_id=other_job.job_id,
+        )
+
+
+# --- Transient error simulation ---
+
+
+def test_process_grading_job_simulated_failure_sets_status_failed() -> None:
+    """Injectable error causes job to transition to 'failed' and raises GradingProcessError."""
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job = service.submit_grading_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        artifact_id=artifact_id,
+    )
+    GradingService._fail_on_job_ids.add(job.job_id)
+    with pytest.raises(GradingProcessError):
+        service.process_grading_job(job.job_id)
+    job_status = service.get_grading_job_status(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job.job_id,
+    )
+    assert job_status.status == "failed"
+    assert job_status.attempt_count == 1
+    assert job_status.result is None
+
+
+def test_process_grading_job_failed_job_is_idempotent_no_op() -> None:
+    """A job already in 'failed' state is skipped (idempotency guard)."""
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job = service.submit_grading_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        artifact_id=artifact_id,
+    )
+    GradingService._fail_on_job_ids.add(job.job_id)
+    with pytest.raises(GradingProcessError):
+        service.process_grading_job(job.job_id)
+    # Second call must be a no-op (idempotency guard: status == "failed")
+    service.process_grading_job(job.job_id)  # should not raise
+    job_status = service.get_grading_job_status(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job.job_id,
+    )
+    assert job_status.attempt_count == 1  # not incremented by second call
+
+
+# --- Approval gate ---
+
+
+def _submit_and_process(service: GradingService, assignment_id: str, artifact_id: str) -> str:
+    """Submit a grading job and process it; return job_id."""
+    job = service.submit_grading_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        artifact_id=artifact_id,
+    )
+    service.process_grading_job(job.job_id)
+    return job.job_id
+
+
+def test_approve_grading_job_success() -> None:
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_and_process(service, assignment_id, artifact_id)
+
+    approval = service.approve_grading_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        approved_score="90/100",
+        approved_feedback="Excellent work.",
+    )
+    assert approval.job_id == job_id
+    assert approval.approved_score == "90/100"
+    assert approval.approved_feedback == "Excellent work."
+    assert approval.approver_user_id == "usr_teacher_1"
+    assert approval.approved_at
+    assert approval.version == 1
+
+
+def test_approve_grading_job_override_score() -> None:
+    """Teacher can set a different score than AI proposed."""
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_and_process(service, assignment_id, artifact_id)
+
+    approval = service.approve_grading_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        approved_score="75/100",
+        approved_feedback="Needs improvement on section 2.",
+    )
+    assert approval.approved_score == "75/100"
+    assert approval.approved_score != "85/100"  # differs from AI proposed_score
+
+
+def test_approve_grading_job_reapproval_increments_version() -> None:
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_and_process(service, assignment_id, artifact_id)
+
+    service.approve_grading_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        approved_score="85/100",
+        approved_feedback="Good.",
+    )
+    second = service.approve_grading_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        approved_score="88/100",
+        approved_feedback="Very good.",
+    )
+    assert second.version == 2
+    assert second.approved_score == "88/100"
+
+
+def test_approve_grading_job_fails_if_not_completed() -> None:
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job = service.submit_grading_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        artifact_id=artifact_id,
+    )
+    # Job is still "pending" — not yet processed
+    with pytest.raises(GradingStateError):
+        service.approve_grading_job(
+            actor_user_id="usr_teacher_1",
+            actor_org_id="org_demo_1",
+            assignment_id=assignment_id,
+            job_id=job.job_id,
+            approved_score="85/100",
+            approved_feedback="Good.",
+        )
+
+
+def test_approve_grading_job_cross_tenant_forbidden() -> None:
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_and_process(service, assignment_id, artifact_id)
+
+    with pytest.raises(GradingAccessError):
+        service.approve_grading_job(
+            actor_user_id="usr_teacher_9",
+            actor_org_id="org_other_1",
+            assignment_id=assignment_id,
+            job_id=job_id,
+            approved_score="85/100",
+            approved_feedback="Good.",
+        )
+
+
+def test_approve_grading_job_unknown_job_forbidden() -> None:
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    with pytest.raises(GradingAccessError):
+        service.approve_grading_job(
+            actor_user_id="usr_teacher_1",
+            actor_org_id="org_demo_1",
+            assignment_id=assignment_id,
+            job_id="gjob_does_not_exist",
+            approved_score="85/100",
+            approved_feedback="Good.",
+        )
+
+
+def test_get_grade_approval_success() -> None:
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_and_process(service, assignment_id, artifact_id)
+    service.approve_grading_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        approved_score="90/100",
+        approved_feedback="Great.",
+    )
+
+    approval = service.get_grade_approval(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+    )
+    assert approval.approved_score == "90/100"
+    assert approval.version == 1
+
+
+def test_get_grade_approval_unapproved_returns_forbidden() -> None:
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_and_process(service, assignment_id, artifact_id)
+
+    with pytest.raises(GradingAccessError):
+        service.get_grade_approval(
+            actor_user_id="usr_teacher_1",
+            actor_org_id="org_demo_1",
+            assignment_id=assignment_id,
+            job_id=job_id,
+        )
+
+
+def test_list_grade_versions_after_two_approvals() -> None:
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_and_process(service, assignment_id, artifact_id)
+
+    service.approve_grading_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        approved_score="80/100",
+        approved_feedback="First pass.",
+    )
+    service.approve_grading_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        approved_score="85/100",
+        approved_feedback="Revised.",
+    )
+
+    versions = service.list_grade_versions(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+    )
+    assert len(versions) == 2
+    assert versions[0].version == 1
+    assert versions[0].approved_score == "80/100"
+    assert versions[1].version == 2
+    assert versions[1].approved_score == "85/100"
+
+
+def test_get_grading_job_status_is_approved_false_before_approval() -> None:
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_and_process(service, assignment_id, artifact_id)
+
+    job_status = service.get_grading_job_status(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+    )
+    assert job_status.is_approved is False
+
+
+def test_get_grading_job_status_is_approved_true_after_approval() -> None:
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_and_process(service, assignment_id, artifact_id)
+    service.approve_grading_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        approved_score="85/100",
+        approved_feedback="Approved.",
+    )
+
+    job_status = service.get_grading_job_status(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+    )
+    assert job_status.is_approved is True
+
+
+def test_get_grade_approval_cross_tenant_forbidden() -> None:
+    """Job owned by org_demo_1 is inaccessible to a different org actor (AC8)."""
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_and_process(service, assignment_id, artifact_id)
+    service.approve_grading_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        approved_score="85/100",
+        approved_feedback="Good.",
+    )
+
+    with pytest.raises(GradingAccessError):
+        service.get_grade_approval(
+            actor_user_id="usr_teacher_9",
+            actor_org_id="org_other_1",
+            assignment_id=assignment_id,
+            job_id=job_id,
+        )
+
+
+def test_list_grade_versions_cross_tenant_forbidden() -> None:
+    """Job owned by org_demo_1 is inaccessible to a different org actor (AC8)."""
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_and_process(service, assignment_id, artifact_id)
+
+    with pytest.raises(GradingAccessError):
+        service.list_grade_versions(
+            actor_user_id="usr_teacher_9",
+            actor_org_id="org_other_1",
+            assignment_id=assignment_id,
+            job_id=job_id,
+        )
+
+
+# --- Recommendation jobs ---
+
+
+def _submit_approve_and_get_job_id(service: GradingService, assignment_id: str, artifact_id: str) -> str:
+    """Submit, process, and approve a grading job; return job_id."""
+    job_id = _submit_and_process(service, assignment_id, artifact_id)
+    service.approve_grading_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        approved_score="85/100",
+        approved_feedback="Good.",
+    )
+    return job_id
+
+
+def test_submit_recommendation_job_success() -> None:
+    """AC1: rec_job created, status=pending, student_id populated from artifact."""
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_approve_and_get_job_id(service, assignment_id, artifact_id)
+
+    rec_job = service.submit_recommendation_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+    )
+    assert rec_job.rec_job_id.startswith("rec_")
+    assert rec_job.job_id == job_id
+    assert rec_job.assignment_id == assignment_id
+    assert rec_job.student_id == "stu_demo_1"
+    assert rec_job.status == "pending"
+    assert rec_job.attempt_count == 0
+    assert rec_job.submitted_at
+    assert rec_job.completed_at is None
+
+
+def test_submit_recommendation_job_requires_approved_job() -> None:
+    """AC3: un-approved job raises GradingStateError."""
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_and_process(service, assignment_id, artifact_id)
+
+    with pytest.raises(GradingStateError, match="approved"):
+        service.submit_recommendation_job(
+            actor_user_id="usr_teacher_1",
+            actor_org_id="org_demo_1",
+            assignment_id=assignment_id,
+            job_id=job_id,
+        )
+
+
+def test_submit_recommendation_job_idempotent() -> None:
+    """AC1: second call returns same rec_job_id."""
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_approve_and_get_job_id(service, assignment_id, artifact_id)
+
+    rec_job1 = service.submit_recommendation_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+    )
+    rec_job2 = service.submit_recommendation_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+    )
+    assert rec_job1.rec_job_id == rec_job2.rec_job_id
+
+
+def test_submit_recommendation_job_cross_tenant_forbidden() -> None:
+    """AC8: cross-tenant actor raises GradingAccessError."""
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_approve_and_get_job_id(service, assignment_id, artifact_id)
+
+    with pytest.raises(GradingAccessError):
+        service.submit_recommendation_job(
+            actor_user_id="usr_teacher_9",
+            actor_org_id="org_other_1",
+            assignment_id=assignment_id,
+            job_id=job_id,
+        )
+
+
+def test_submit_recommendation_job_unknown_job_forbidden() -> None:
+    """AC8: unknown job_id raises GradingAccessError."""
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+
+    with pytest.raises(GradingAccessError):
+        service.submit_recommendation_job(
+            actor_user_id="usr_teacher_1",
+            actor_org_id="org_demo_1",
+            assignment_id=assignment_id,
+            job_id="gjob_does_not_exist",
+        )
+
+
+def test_submit_recommendation_job_forbidden_if_job_artifact_missing() -> None:
+    """Defensive check: recommendation submit fails closed if grading job references missing artifact."""
+    service = _make_service()
+    repo = InMemoryGradingRepository()
+
+    assignment = repo.create_assignment(
+        class_id="cls_demo_math_1",
+        org_id="org_demo_1",
+        teacher_user_id="usr_teacher_1",
+        title="Chapter 3 Quiz",
+    )
+    grading_job = repo.create_grading_job(
+        artifact_id="artf_missing",
+        assignment_id=assignment.assignment_id,
+        org_id="org_demo_1",
+        teacher_user_id="usr_teacher_1",
+    )
+    repo.update_grading_job(
+        job_id=grading_job.job_id,
+        status="completed",
+        attempt_count=1,
+    )
+    repo.upsert_grade_approval(
+        job_id=grading_job.job_id,
+        approved_score="85/100",
+        approved_feedback="Good.",
+        approver_user_id="usr_teacher_1",
+        version=1,
+        approved_at="2026-03-18T00:00:00+00:00",
+    )
+
+    with pytest.raises(GradingAccessError):
+        service.submit_recommendation_job(
+            actor_user_id="usr_teacher_1",
+            actor_org_id="org_demo_1",
+            assignment_id=assignment.assignment_id,
+            job_id=grading_job.job_id,
+        )
+
+
+def test_process_recommendation_job_generates_topics() -> None:
+    """AC2: topics non-empty after processing; each has topic/suggestion/weakness_signal."""
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_approve_and_get_job_id(service, assignment_id, artifact_id)
+
+    rec_job = service.submit_recommendation_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+    )
+    service.process_recommendation_job(rec_job.rec_job_id)
+
+    result = service.get_recommendation_job_status(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        rec_job_id=rec_job.rec_job_id,
+    )
+    assert result.status == "completed"
+    assert result.result is not None
+    assert len(result.result.topics) >= 1
+    for topic in result.result.topics:
+        assert topic["topic"]
+        assert topic["suggestion"]
+        assert topic["weakness_signal"]
+
+
+def test_process_recommendation_job_idempotent_when_completed() -> None:
+    """Second process call is a no-op (attempt_count unchanged)."""
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_approve_and_get_job_id(service, assignment_id, artifact_id)
+
+    rec_job = service.submit_recommendation_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+    )
+    service.process_recommendation_job(rec_job.rec_job_id)
+    status_after_first = service.get_recommendation_job_status(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        rec_job_id=rec_job.rec_job_id,
+    )
+    attempt_count_after_first = status_after_first.attempt_count
+
+    service.process_recommendation_job(rec_job.rec_job_id)
+    status_after_second = service.get_recommendation_job_status(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        rec_job_id=rec_job.rec_job_id,
+    )
+    assert status_after_second.attempt_count == attempt_count_after_first
+
+
+def test_get_recommendation_job_status_pending() -> None:
+    """Before processing: status=pending, result=None."""
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_approve_and_get_job_id(service, assignment_id, artifact_id)
+
+    rec_job = service.submit_recommendation_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+    )
+    status_obj = service.get_recommendation_job_status(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        rec_job_id=rec_job.rec_job_id,
+    )
+    assert status_obj.status == "pending"
+    assert status_obj.result is None
+
+
+def test_get_recommendation_job_status_completed() -> None:
+    """After processing: status=completed, result non-None."""
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_approve_and_get_job_id(service, assignment_id, artifact_id)
+
+    rec_job = service.submit_recommendation_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+    )
+    service.process_recommendation_job(rec_job.rec_job_id)
+    status_obj = service.get_recommendation_job_status(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        rec_job_id=rec_job.rec_job_id,
+    )
+    assert status_obj.status == "completed"
+    assert status_obj.result is not None
+
+
+def test_get_recommendation_job_is_confirmed_false_before_confirm() -> None:
+    """AC6: is_confirmed == False before confirmation."""
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_approve_and_get_job_id(service, assignment_id, artifact_id)
+
+    rec_job = service.submit_recommendation_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+    )
+    service.process_recommendation_job(rec_job.rec_job_id)
+    status_obj = service.get_recommendation_job_status(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        rec_job_id=rec_job.rec_job_id,
+    )
+    assert status_obj.is_confirmed is False
+
+
+def test_confirm_recommendations_success() -> None:
+    """AC4+5: confirmed_by set, confirmed_at non-empty; is_confirmed==True on subsequent GET."""
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_approve_and_get_job_id(service, assignment_id, artifact_id)
+
+    rec_job = service.submit_recommendation_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+    )
+    service.process_recommendation_job(rec_job.rec_job_id)
+
+    confirmed = service.confirm_recommendations(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        rec_job_id=rec_job.rec_job_id,
+        topics=[{"topic": "Content Accuracy", "suggestion": "Review chapter 3."}],
+    )
+    assert confirmed.confirmed_by == "usr_teacher_1"
+    assert confirmed.confirmed_at
+    assert confirmed.topics[0]["weakness_signal"]
+
+    status_obj = service.get_recommendation_job_status(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        rec_job_id=rec_job.rec_job_id,
+    )
+    assert status_obj.is_confirmed is True
+
+
+def test_confirm_recommendations_requires_completed_status() -> None:
+    """AC4: raises GradingStateError if rec_job not completed."""
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_approve_and_get_job_id(service, assignment_id, artifact_id)
+
+    rec_job = service.submit_recommendation_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+    )
+    # Do NOT process — rec_job is still pending
+
+    with pytest.raises(GradingStateError, match="completed"):
+        service.confirm_recommendations(
+            actor_user_id="usr_teacher_1",
+            actor_org_id="org_demo_1",
+            assignment_id=assignment_id,
+            job_id=job_id,
+            rec_job_id=rec_job.rec_job_id,
+            topics=[],
+        )
+
+
+def test_confirm_recommendations_upserts_on_reconfirm() -> None:
+    """AC4: second confirm with different topics upserts correctly."""
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_approve_and_get_job_id(service, assignment_id, artifact_id)
+
+    rec_job = service.submit_recommendation_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+    )
+    service.process_recommendation_job(rec_job.rec_job_id)
+
+    service.confirm_recommendations(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        rec_job_id=rec_job.rec_job_id,
+        topics=[{"topic": "Old Topic", "suggestion": "Old suggestion."}],
+    )
+    confirmed2 = service.confirm_recommendations(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        rec_job_id=rec_job.rec_job_id,
+        topics=[{"topic": "New Topic", "suggestion": "New suggestion."}],
+    )
+    assert confirmed2.topics[0]["topic"] == "New Topic"
+
+
+def test_get_recommendation_job_status_cross_tenant_forbidden() -> None:
+    """AC8: cross-tenant actor cannot poll another org's recommendation job."""
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_approve_and_get_job_id(service, assignment_id, artifact_id)
+
+    rec_job = service.submit_recommendation_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+    )
+
+    with pytest.raises(GradingAccessError):
+        service.get_recommendation_job_status(
+            actor_user_id="usr_teacher_9",
+            actor_org_id="org_other_1",
+            assignment_id=assignment_id,
+            job_id=job_id,
+            rec_job_id=rec_job.rec_job_id,
+        )
+
+
+def test_confirm_recommendations_cross_tenant_forbidden() -> None:
+    """AC8: cross-tenant actor raises GradingAccessError."""
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_approve_and_get_job_id(service, assignment_id, artifact_id)
+
+    rec_job = service.submit_recommendation_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+    )
+    service.process_recommendation_job(rec_job.rec_job_id)
+
+    with pytest.raises(GradingAccessError):
+        service.confirm_recommendations(
+            actor_user_id="usr_teacher_9",
+            actor_org_id="org_other_1",
+            assignment_id=assignment_id,
+            job_id=job_id,
+            rec_job_id=rec_job.rec_job_id,
+            topics=[],
+        )
+
+
+def test_get_confirmed_recommendation_success() -> None:
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_approve_and_get_job_id(service, assignment_id, artifact_id)
+
+    rec_job = service.submit_recommendation_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+    )
+    service.process_recommendation_job(rec_job.rec_job_id)
+    service.confirm_recommendations(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        rec_job_id=rec_job.rec_job_id,
+        topics=[{"topic": "Content Accuracy", "suggestion": "Review chapter 3."}],
+    )
+
+    confirmed = service.get_confirmed_recommendation(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+        rec_job_id=rec_job.rec_job_id,
+    )
+    assert confirmed.rec_job_id == rec_job.rec_job_id
+    assert confirmed.confirmed_by == "usr_teacher_1"
+
+
+def test_get_confirmed_recommendation_forbidden_when_not_confirmed() -> None:
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job_id = _submit_approve_and_get_job_id(service, assignment_id, artifact_id)
+
+    rec_job = service.submit_recommendation_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job_id,
+    )
+    service.process_recommendation_job(rec_job.rec_job_id)
+
+    with pytest.raises(GradingAccessError):
+        service.get_confirmed_recommendation(
+            actor_user_id="usr_teacher_1",
+            actor_org_id="org_demo_1",
+            assignment_id=assignment_id,
+            job_id=job_id,
+            rec_job_id=rec_job.rec_job_id,
         )

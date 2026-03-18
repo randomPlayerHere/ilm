@@ -24,5 +24,5 @@ testpaths = ["tests"]
 pythonpath = ["."]
 
 [tool.ilm]
-story = "2.4"
-notes = "Async AI grading job submission and status polling. POST /grading/assignments/{id}/grading-jobs returns 202 with job_id; GET polls status. BackgroundTasks-driven stub AI processing with idempotency gate (artifact→job index). Fail-closed tenant authorization."
+story = "2.6"
+notes = "Weakness-based practice recommendations. POST .../recommendation-jobs (202, idempotent) triggers async recommendation generation from non-exceeds_expectations rubric dimensions; GET polls status/result; POST .../confirm stores teacher-confirmed topics with confirmed_by/confirmed_at/student_id (upsert). Approval gate enforced (409 if not approved). is_confirmed gate for Epic 3 visibility."

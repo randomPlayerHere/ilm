@@ -25,6 +25,13 @@ Implements identity + admin lifecycle baseline with:
 - `GET /grading/assignments/{assignment_id}/artifacts`
 - `POST /grading/assignments/{assignment_id}/grading-jobs`
 - `GET /grading/assignments/{assignment_id}/grading-jobs/{job_id}`
+- `POST /grading/assignments/{assignment_id}/grading-jobs/{job_id}/approve`
+- `GET /grading/assignments/{assignment_id}/grading-jobs/{job_id}/approval`
+- `GET /grading/assignments/{assignment_id}/grading-jobs/{job_id}/versions`
+- `POST /grading/assignments/{assignment_id}/grading-jobs/{job_id}/recommendation-jobs`
+- `GET /grading/assignments/{assignment_id}/grading-jobs/{job_id}/recommendation-jobs/{rec_job_id}`
+- `POST /grading/assignments/{assignment_id}/grading-jobs/{job_id}/recommendation-jobs/{rec_job_id}/confirm`
+- `GET /grading/assignments/{assignment_id}/grading-jobs/{job_id}/recommendation-jobs/{rec_job_id}/confirm`
 - `POST /admin/users/{user_id}/activate`
 - `POST /admin/users/{user_id}/deactivate`
 - `POST /admin/invitations/accept`
