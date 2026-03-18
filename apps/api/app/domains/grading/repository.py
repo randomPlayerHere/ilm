@@ -119,6 +119,20 @@ class ConfirmedRecommendationRecord:
     confirmed_at: str
 
 
+@dataclass(frozen=True)
+class ApprovedGradeRecord:
+    job_id: str
+    artifact_id: str
+    assignment_id: str
+    assignment_title: str
+    student_id: str
+    approved_score: str
+    approved_feedback: str
+    approved_at: str
+    approver_user_id: str
+    version: int
+
+
 class InMemoryGradingRepository:
     _classes: dict[str, ClassContextRecord] = {}
     _students: dict[str, StudentContextRecord] = {}
@@ -183,6 +197,12 @@ class InMemoryGradingRepository:
                 org_id="org_other_1",
                 teacher_user_id="usr_teacher_9",
                 class_id="cls_other_org_1",
+            ),
+            "usr_student_1": StudentContextRecord(
+                student_id="usr_student_1",
+                org_id="org_demo_1",
+                teacher_user_id="usr_teacher_1",
+                class_id="cls_demo_math_1",
             ),
         }
         cls._assignments = {}
@@ -515,3 +535,42 @@ class InMemoryGradingRepository:
 
     def get_confirmed_recommendation(self, rec_job_id: str) -> ConfirmedRecommendationRecord | None:
         return self.__class__._confirmed_recommendations.get(rec_job_id)
+
+    def list_approved_grades_for_student(self, student_id: str, org_id: str) -> list[ApprovedGradeRecord]:
+        student_artifacts = [
+            a for a in self.__class__._artifacts.values()
+            if a.student_id == student_id and a.org_id == org_id
+        ]
+        results = []
+        for artifact in student_artifacts:
+            job_id = self.__class__._artifact_job_index.get(artifact.artifact_id)
+            if job_id is None:
+                continue
+            approval = self.__class__._grade_approvals.get(job_id)
+            if approval is None:
+                continue
+            assignment = self.__class__._assignments.get(artifact.assignment_id)
+            results.append(ApprovedGradeRecord(
+                job_id=job_id,
+                artifact_id=artifact.artifact_id,
+                assignment_id=artifact.assignment_id,
+                assignment_title=assignment.title if assignment else "[Assignment Not Found]",
+                student_id=student_id,
+                approved_score=approval.approved_score,
+                approved_feedback=approval.approved_feedback,
+                approved_at=approval.approved_at,
+                approver_user_id=approval.approver_user_id,
+                version=approval.version,
+            ))
+        return sorted(results, key=lambda r: (datetime.fromisoformat(r.approved_at), r.job_id))
+
+    def list_confirmed_recommendations_for_student(self, student_id: str, org_id: str) -> list[ConfirmedRecommendationRecord]:
+        results = []
+        for rec in self.__class__._confirmed_recommendations.values():
+            if rec.student_id != student_id:
+                continue
+            rec_job = self.__class__._recommendation_jobs.get(rec.rec_job_id)
+            if rec_job is None or rec_job.org_id != org_id:
+                continue
+            results.append(rec)
+        return results

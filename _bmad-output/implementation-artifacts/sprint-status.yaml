@@ -58,9 +58,9 @@ development_status:
   2-6-generate-weakness-based-practice-recommendations: done
   epic-2-retrospective: done
 
-  epic-3: backlog
-  3-1-linked-guardian-and-student-progress-access: backlog
-  3-2-outcome-explanations-and-trend-visualization: backlog
+  epic-3: in-progress
+  3-1-linked-guardian-and-student-progress-access: done
+  3-2-outcome-explanations-and-trend-visualization: done
   3-3-strength-weakness-indicators-and-next-step-guidance: backlog
   3-4-parent-self-serve-notification-preferences: backlog
   epic-3-retrospective: optional

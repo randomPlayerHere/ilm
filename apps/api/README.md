@@ -32,6 +32,8 @@ Implements identity + admin lifecycle baseline with:
 - `GET /grading/assignments/{assignment_id}/grading-jobs/{job_id}/recommendation-jobs/{rec_job_id}`
 - `POST /grading/assignments/{assignment_id}/grading-jobs/{job_id}/recommendation-jobs/{rec_job_id}/confirm`
 - `GET /grading/assignments/{assignment_id}/grading-jobs/{job_id}/recommendation-jobs/{rec_job_id}/confirm`
+- `GET /progress/students/{student_id}/grades`
+- `GET /progress/students/{student_id}/recommendations`
 - `POST /admin/users/{user_id}/activate`
 - `POST /admin/users/{user_id}/deactivate`
 - `POST /admin/invitations/accept`
@@ -125,6 +127,7 @@ Allowed cross-domain import: `app.domains.auth.dependencies` only (for `ActorCon
 | `POST /courses/*`, `GET /courses/*`, `PUT /courses/*` | `teacher` (same-org ownership) |
 | `POST /grading/*`, `GET /grading/*` | `teacher` (same-org ownership) |
 | `POST /students/*`, `GET /students/*`, `DELETE /students/*` | `teacher` (same-org) |
+| `GET /progress/students/*` | `parent` (linked via GuardianStudentLink) or `student` (self only) |
 
 ## Local Run
 

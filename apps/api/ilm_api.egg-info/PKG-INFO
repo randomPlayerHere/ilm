@@ -4,9 +4,11 @@ Version: 0.1.0
 Summary: FastAPI service for TeacherOS
 Requires-Python: >=3.11
 Requires-Dist: bcrypt<5.0.0,>=4.1.3
+Requires-Dist: cryptography<46.0.0,>=44.0.0
 Requires-Dist: fastapi<1.0.0,>=0.115.0
 Requires-Dist: pydantic<3.0.0,>=2.8.0
 Requires-Dist: pyjwt<3.0.0,>=2.9.0
+Requires-Dist: python-multipart<1.0.0,>=0.0.18
 Requires-Dist: uvicorn<1.0.0,>=0.30.0
 Provides-Extra: dev
 Requires-Dist: httpx<1.0.0,>=0.27.0; extra == "dev"
