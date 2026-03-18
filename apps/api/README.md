@@ -62,6 +62,70 @@ Revision history is available via `GET /courses/drafts/{draft_id}/revisions` for
 Assignment creation requires `teacher` role and ownership of the target class (org+teacher checks). Artifact upload accepts multipart `file` + form field `student_id`; supported media types: `image/jpeg`, `image/png`, `image/gif`, `image/webp`, `application/pdf`. Unsupported types return `422`. Artifacts are stored in-memory with a stub `storage_key` (`s3://stub/{artifact_id}`). Student must be enrolled in the assignment's class (class-boundary enforcement). All grading endpoints enforce fail-closed `403` on unknown or cross-tenant references.
 AI grading jobs are submitted via `POST /grading/assignments/{assignment_id}/grading-jobs` (body: `{"artifact_id": "..."}`) and return `202 Accepted` with a `job_id`. Jobs are processed asynchronously via FastAPI `BackgroundTasks` (in-memory stub). Poll status via `GET /grading/assignments/{assignment_id}/grading-jobs/{job_id}`: returns `status` (`pending`/`processing`/`completed`/`failed`) and, when completed, a `result` block with `proposed_score`, `rubric_mapping`, and `draft_feedback`. Submitting a grading job for an artifact that already has a job returns the existing job (idempotency gate).
 
+## Authz and Tenant Safety Rules
+
+### Authentication
+
+All protected endpoints require `Authorization: Bearer <token>` with a valid JWT. Tokens are
+issued by `POST /auth/login` or `POST /auth/google` and contain three claims: `sub` (user_id),
+`org_id`, and `role`. Requests without a token, or with a malformed/expired token, return
+`401 Unauthorized`.
+
+### Role Enforcement
+
+`require_authenticated_actor` (in `app.domains.auth.dependencies`) is the **single auth
+dependency** for all protected routes. It:
+
+1. Decodes and validates the JWT.
+2. Looks up the user record in the repository.
+3. Cross-checks token `role` against the stored DB role — mismatch → `403`.
+4. Cross-checks token `org_id` against the stored DB org — mismatch → `403`.
+5. Rejects inactive users → `403`.
+
+**Never** add route-local authorization logic. All role checks belong in domain-specific
+`_require_<role>(actor)` helpers that call `raise HTTPException(403)` if the actor's role
+does not match.
+
+### Supported Roles
+
+| Role | Home Path | Notes |
+| ---- | --------- | ----- |
+| `admin` | `/admin` | Full org lifecycle, user management, safety controls |
+| `principal` | `/org-analytics` | Read access to org-scoped analytics |
+| `teacher` | `/teacher` | Course drafts, assignments, grading, guardian-student links |
+| `parent` | `/parent` | Guardian-student link read access (Epic 3+) |
+| `student` | `/student` | Own progress read access (Epic 3+) |
+
+### Tenant Isolation
+
+Every domain operation is scoped to `actor.org_id`. The rules are:
+
+- **Mutations**: `org_id` is always sourced from `actor.org_id` — never from the request body.
+- **Reads**: repository methods accept `org_id` as a required parameter and filter at query time.
+- **Cross-tenant not-found**: when a resource exists in another org, return `404` (not `403`) to
+  avoid confirming cross-tenant resource existence (information disclosure prevention).
+- **No org escalation**: users cannot act outside their token `org_id`. The auth dependency
+  enforces this before any endpoint handler runs.
+
+### Domain Boundary Rule
+
+Domains must not import from each other. If an endpoint needs data from multiple domains, it
+calls both repositories directly — it does not import domain A's internals into domain B.
+Allowed cross-domain import: `app.domains.auth.dependencies` only (for `ActorContext` and
+`require_authenticated_actor`).
+
+### Endpoint-Level Role Summary
+
+| Endpoint group | Required role |
+| -------------- | ------------- |
+| `POST /auth/*` | Public |
+| `POST /admin/*`, `GET /admin/*` | `admin` (except `/admin/protected/*` which allows `admin` or `principal`) |
+| `GET /admin/protected/*` | `admin` or `principal` (same-org) |
+| `GET /admin/organizations/{org_id}/safety-controls` | `admin`, `principal`, or `teacher` (same-org) |
+| `POST /courses/*`, `GET /courses/*`, `PUT /courses/*` | `teacher` (same-org ownership) |
+| `POST /grading/*`, `GET /grading/*` | `teacher` (same-org ownership) |
+| `POST /students/*`, `GET /students/*`, `DELETE /students/*` | `teacher` (same-org) |
+
 ## Local Run
 
 ```bash
