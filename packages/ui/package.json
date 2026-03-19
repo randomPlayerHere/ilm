@@ -1,5 +1,5 @@
 {
-  "name": "@ilm/contracts",
+  "name": "@ilm/ui",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -11,8 +11,16 @@
     "test": "echo 'no tests yet'",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@tamagui/core": "^1.114.0",
+    "@ilm/design-tokens": "workspace:*"
+  },
   "devDependencies": {
     "@ilm/tsconfig": "workspace:*",
+    "react": "^18.3.0",
     "typescript": "^5.6.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
   }
 }

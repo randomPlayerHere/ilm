@@ -1,5 +1,5 @@
 {
-  "name": "@ilm/contracts",
+  "name": "@ilm/design-tokens",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -10,6 +10,11 @@
     "lint": "echo 'lint ok'",
     "test": "echo 'no tests yet'",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tamagui/config": "^1.114.0",
+    "@tamagui/core": "^1.114.0",
+    "@tamagui/themes": "^1.114.0"
   },
   "devDependencies": {
     "@ilm/tsconfig": "workspace:*",

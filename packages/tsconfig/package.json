@@ -1,0 +1,6 @@
+{
+  "name": "@ilm/tsconfig",
+  "private": true,
+  "version": "0.1.0",
+  "files": ["base.json", "react-native.json", "react-web.json"]
+}
