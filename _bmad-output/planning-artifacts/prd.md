@@ -4,6 +4,10 @@ date: '2025-03-01'
 lastEdited: '2026-03-19'
 editHistory:
   - date: '2026-03-19'
+    changes: 'Added 10 deployability gaps identified in party-mode review: (1) guided onboarding/cold-start flows per role, (2) Google Classroom resolved as MVP basic roster import + sign-in, (3) deployment topology (ECS Fargate + CI/CD + app store pipeline), (4) offline/poor-connectivity photo queue and cached dashboards, (5) image compression pipeline, (6) push notification infrastructure (FCM/APNs), (7) AI grading error/fallback states with manual grading path, (8) COPPA consent confirmation gate, (9) app store compliance for children education apps, (10) simplified subscription to free pilot tier for MVP. Added FRs 9a-9e, 18a-18b, 46-48. Updated FR44, MVP scope, Technical Architecture, Domain Requirements, Subscription Tiers, Integration List, Implementation Considerations, and Post-MVP phases.'
+  - date: '2026-03-19'
+    changes: 'Clarified AI grading approach: multimodal vision models (e.g., Claude, GPT-4 Vision) analyze assignment images directly with no separate OCR step. Updated Innovation & Novel Patterns, Technical Architecture Considerations, and FR14.'
+  - date: '2026-03-19'
     changes: 'Reframed product as mobile-centric (React Native) with companion web interface. Updated Executive Summary, Product Scope, Technical Architecture, User Journeys, Functional Requirements preamble, Non-Functional Requirements, and Project Scoping to explicitly define a fully usable mobile application as the primary deliverable.'
 inputDocuments: ['_bmad-output/planning-artifacts/product-brief-ilm-2025-03-01.md', '_bmad-output/brainstorming/brainstorming-session-2025-03-01.md']
 workflowType: 'prd'
@@ -83,13 +87,15 @@ The product is explicitly designed to answer *"Is my child improving?"* with tra
 - **Course/curriculum:** Dynamic curriculum and lesson/assessment planning; teacher chat to create generic and student-specific plans using student data.
 - **Mobile application (primary):** React Native mobile app delivering all teacher, parent, and student workflows as usable mobile screens with native device capabilities (camera for assignment capture, push notifications).
 - **Companion web interface:** Browser-based interface for principal/org manager dashboards and admin management workflows.
+- **Onboarding & cold-start:** Guided first-time setup per role. Admin creates org and invites teachers via email link. Teachers add classes (manually or CSV import) and invite parents via a pre-linked invite URL tied to the student. Parents tap invite link → Google sign-in → child already linked → dashboard visible. Students receive a class join code or teacher-generated link. Each role sees a 2-3 step guided wizard that delivers a value moment within 2 minutes (teacher: snap a photo and see AI grading; parent: see child's dashboard; student: see growth view).
+- **Offline & poor-connectivity support (MVP-lean):** Mobile app queues photo captures locally when offline and auto-uploads when connectivity resumes. Dashboard views cache last-fetched data for read-only offline access. No offline editing of grades or messages in MVP.
 - **Platform baseline:** Auth (email/password + Google sign-in), role-based access; mobile app as primary delivery surface for teacher, parent, and student roles; companion web interface for admin and principal/org manager roles; global admin for users, roles, orgs, content, and safety controls.
 
 ### Growth (Post-MVP)
 
 - Principal/org dashboard: cohort-level metrics, resource-allocation insights, special needs and gifted support.
 - Student experience: avatar tutor, "level up" framing, safe AI mode (vetted prompts/responses).
-- Ecosystem: Google Classroom integration, internal community for teachers/parents.
+- Ecosystem: deeper Google Classroom sync (assignments, real-time grade writeback), internal community for teachers/parents.
 - Deeper differentiation: comparative benchmarking (class → state → country), portable student portfolio, richer notifications and digest options.
 
 ### Vision (Future)
@@ -169,6 +175,8 @@ The product is explicitly designed to answer *"Is my child improving?"* with tra
 ### Compliance & Regulatory
 
 - **Student privacy (COPPA/FERPA):** Collect, store, and share only what's necessary; obtain parent consent where required (e.g. under-13); document data access and sharing so schools can meet FERPA.
+- **COPPA consent flow (MVP):** Schools handle parental consent collection via their existing processes (paper or digital forms). The platform requires a school admin to confirm that parental consent has been obtained before a parent/student account is activated for any child under 13. No direct data collection from children occurs without school-verified consent confirmation. The consent status is recorded and auditable.
+- **App store compliance for children's apps:** The app is positioned as an educational institution tool (school-managed), not a child-directed app in the Kids category. This avoids the most restrictive Kids category SDK and data-collection rules. Student accounts are school-provisioned and parent-consented; no child can self-register. All third-party SDKs included in the mobile build must be reviewed for Apple App Store and Google Play compliance with education/children policies before each release. Privacy nutrition labels (Apple) and Data Safety sections (Google) must accurately reflect data collection practices.
 - **Accessibility:** Meet WCAG 2.x (Level AA as baseline) for dashboards and key flows so teachers, parents, and students with disabilities can use the product.
 - **Content moderation:** Define rules for user-generated content (e.g. internal community, messages); review and moderation path for reported content; age-appropriate and safe AI use (e.g. safe AI mode).
 - **Curriculum alignment:** Support alignment to learning/curriculum standards where needed (e.g. for plans and assessments); document how content maps to standards if claimed.
@@ -196,7 +204,7 @@ The product is explicitly designed to answer *"Is my child improving?"* with tra
 
 ### Detected Innovation Areas
 
-- **AI-assisted grading from photos:** Teacher captures work in-app; AI suggests scores and feedback; teacher reviews/approves. Reduces grading load and supports consistent, explainable feedback.
+- **AI-assisted grading from photos via multimodal AI:** Teacher captures work in-app; a multimodal vision model (e.g., Claude or GPT-4 Vision) analyzes the image directly — no separate OCR pipeline needed. The model reads handwriting, interprets diagrams, evaluates answers against rubrics, and suggests scores and feedback in a single inference step. Teacher reviews/approves. Reduces grading load and supports consistent, explainable feedback.
 - **AI-driven lesson and plan creation:** Teacher chat produces generic plans (e.g. "6th grade math, struggles with multiplication") and student-specific plans using that student's data. Combines workflow automation with an AI-agent style interface.
 - **"Is my child improving?" as product center:** Product and UX are built around answering that question (transparency, longitudinal view, self-serve) instead of only storing grades. Shifts parent–teacher communication from reactive to proactive and self-serve.
 - **Self-serve parent and student access:** Parents and students get dashboards and explanations without the teacher as gatekeeper. Changes the usual "teacher as sole source of truth" pattern.
@@ -233,10 +241,27 @@ The system delivers a **React Native mobile application** as the primary client 
 Core architecture constraints:
 - Every core record is tenant-owned (`org_id`) per SRS DR-001.
 - Tenant isolation is mandatory for all protected access paths per SRS FR-004.
+- AI grading uses multimodal vision models (e.g., Claude or GPT-4 Vision) to analyze assignment images directly — no separate OCR step or text-extraction pipeline is required. The model receives the image and rubric context, then returns scores and feedback in one pass.
 - Sensitive workloads (e.g., AI grading jobs) can run asynchronously but must preserve org-scoped data boundaries.
 - Auditability is required for sensitive mutations and accesses.
 - Mobile app (React Native) is the primary delivery surface; companion web interface serves admin and org-level oversight roles.
 - Backend exposes a well-defined API consumed by both mobile and web clients.
+
+**Deployment topology (MVP):**
+- Backend services deployed on AWS ECS Fargate (serverless containers) — no cluster management overhead, suitable for lean team.
+- CI/CD via GitHub Actions: automated build, test, and deploy pipeline for backend services, companion web interface, and React Native mobile builds.
+- React Native mobile builds via Expo EAS Build (or Fastlane) for automated iOS (TestFlight) and Android (Play Store internal testing) distribution. App store submission pipeline must be established from sprint 1 — Apple review cycles require early provisioning profiles and signing certificates.
+- Environment tiers: development, staging, production — each with isolated databases and tenant data. Database migrations managed via versioned migration tooling (e.g., Prisma Migrate or Flyway).
+
+**Image optimization pipeline:**
+- Mobile client compresses and resizes captured photos to ~2MP before upload (reduces bandwidth and AI inference cost).
+- Images uploaded directly to S3 via pre-signed URLs. Backend stores metadata and triggers async AI grading job.
+- Original and optimized images retained in S3 for the longitudinal archive / student portfolio.
+
+**Push notification infrastructure:**
+- Firebase Cloud Messaging (FCM) for Android and Apple Push Notification service (APNs) for iOS, unified via a backend notification dispatch service.
+- Notification dispatch is async (SQS-backed) and respects user-configured cadence preferences (instant, daily digest, weekly digest, off) per FR30.
+- Silent/background push used to trigger local data refresh for cached dashboard views.
 
 ### Tenant Model
 
@@ -274,23 +299,21 @@ Defined launch roles and permissions:
 
 ### Subscription Tiers
 
-Current state: **not defined in source artifacts**.
+**MVP launch tier: Free Pilot.**
+- Single tier: all MVP features unlocked, no payment infrastructure required.
+- Available to schools, districts, and tutoring centers onboarding as early adopters.
+- No usage caps enforced in MVP (reasonable fair-use limits communicated informally).
+- Purpose: remove all friction from adoption; prove product value before introducing paid tiers.
 
-Requirement:
-- Product must define launch packaging for at least:
-  - School plan
-  - District plan
-  - Tutoring-center plan
-- Tier definition must specify:
-  - Feature gates (org analytics depth, admin controls, integration availability, support level)
-  - Usage/volume constraints (students, staff, org units)
-  - Contract and onboarding model
-- Until defined, pricing/packaging remains a delivery risk and go-to-market blocker.
+**Post-MVP paid tiers (Growth phase):**
+- School plan, District plan, Tutoring-center plan.
+- Tier definition will specify: feature gates (org analytics depth, admin controls, integration availability, support level), usage/volume constraints (students, staff, org units), and contract/onboarding model.
+- Payment infrastructure (Stripe or equivalent) introduced in Growth phase after pilot validation.
 
 ### Integration List
 
 MVP integration stance:
-- Google Classroom: explicitly unresolved (SRS OI-002); decision required whether MVP or post-MVP.
+- Google Classroom (MVP — basic): one-time roster import (classes and students) and Google sign-in. No real-time bidirectional sync, grade writeback, or assignment mirroring in MVP. Deeper sync deferred to Growth phase.
 - AWS platform dependencies (required infrastructure components):
   - RDS PostgreSQL (system of record)
   - S3 (image/object storage)
@@ -318,10 +341,13 @@ Explicitly not yet required by current artifacts:
 
 ### Implementation Considerations
 
-- Treat subscription tier definition and Google Classroom MVP decision as top open decisions before implementation planning finalization.
+- Google Classroom MVP scope resolved: basic roster import + Google sign-in. Deeper sync deferred to Growth.
+- Subscription tier resolved: single free pilot tier for MVP. No payment infrastructure needed at launch.
 - Implement tenant-isolation safeguards as non-optional acceptance criteria in all protected endpoints and queries.
 - Validate principal/org dashboards for privacy-safe aggregation (no default student PII leakage).
 - Ensure grade publication workflow enforces teacher final approval as a hard gate.
+- Establish app store submission pipeline (TestFlight + Play Store internal testing) in sprint 1. Review all included SDKs for children's app compliance before each release.
+- Build AI grading fallback path (manual grading) as a day-1 requirement — AI failures must never block teacher workflow.
 
 ---
 
@@ -357,10 +383,18 @@ Focus on one undeniable outcome: parents and teachers can reliably answer "Is th
 - Core progress trend view answering "Is my child improving?"
 - Audit logging for grade changes, role changes, sensitive access.
 - COPPA/FERPA-aligned data handling and minimization.
-- AWS baseline platform (RDS, S3, async jobs).
-- React Native mobile app delivering all teacher, parent, and student workflows as complete, usable screens.
+- AWS baseline platform (RDS, S3, async jobs) deployed on ECS Fargate with CI/CD via GitHub Actions.
+- React Native mobile app delivering all teacher, parent, and student workflows as complete, usable screens, with app store submission pipeline (TestFlight + Play Store) from sprint 1.
 - Companion web interface for admin management and principal/org-level dashboards.
 - Shared backend API layer serving both mobile and web clients.
+- Guided onboarding flows per role delivering value within 2 minutes of first login.
+- Google Classroom basic roster import and Google sign-in.
+- Offline photo capture queue and cached dashboard views for poor-connectivity resilience.
+- Client-side image compression before upload (~2MP target).
+- Push notifications via FCM (Android) and APNs (iOS) with user-configurable cadence.
+- AI grading fallback to manual grading when AI fails or returns low-confidence results.
+- COPPA consent confirmation gate (admin-verified) before parent/student account activation for under-13.
+- App store compliance review for children's education app policies before each release.
 
 ### Post-MVP Features
 
@@ -368,9 +402,9 @@ Focus on one undeniable outcome: parents and teachers can reliably answer "Is th
 - Comparative benchmarking (class/district/state) where data quality supports it.
 - Stronger diagnostics (strength/weakness decomposition, consistency signals).
 - Improved notification controls and digest intelligence.
-- Google Classroom integration (if deferred from MVP).
+- Deeper Google Classroom sync (assignments, real-time grade writeback).
 - Enhanced principal insights for staffing/PD decisions.
-- Early subscription packaging rollout (school/district/tutoring-center tiers).
+- Paid subscription tiers (school/district/tutoring-center plans) with payment infrastructure (Stripe or equivalent).
 
 **Phase 3 (Expansion):**
 - Portable student portfolio/shareable records.
@@ -410,6 +444,11 @@ All functional requirements below describe user-facing capabilities delivered th
 - FR7: The system can enforce organization-scoped access for protected data and actions.
 - FR8: The system can prevent cross-tenant data access by default.
 - FR9: Admins can configure baseline safety and content controls.
+- FR9a: Teachers can add classes and students manually or via CSV import.
+- FR9b: Teachers can generate parent invite links pre-linked to a specific student, so parents are automatically connected to their child upon signup.
+- FR9c: Students can join a class via a teacher-generated class join code or invite link.
+- FR9d: Each role (admin, teacher, parent, student) receives a guided first-time setup flow that delivers a core value moment within 3 steps.
+- FR9e: Admins can confirm that parental consent has been collected (per school process) before activating parent/student accounts for children under 13.
 
 ### Teacher Instruction and Assessment Workflow
 
@@ -417,11 +456,13 @@ All functional requirements below describe user-facing capabilities delivered th
 - FR11: Teachers can edit and refine AI-generated instructional content before use.
 - FR12: Teachers can create student-specific instructional plans informed by student performance context.
 - FR13: Teachers can capture student assignment artifacts in-platform (including image upload/capture).
-- FR14: Teachers can receive AI-assisted grading suggestions for submitted/captured work.
+- FR14: Teachers can receive AI-assisted grading suggestions for submitted/captured work, generated by a multimodal AI model that analyzes assignment images directly (no separate OCR step).
 - FR15: Teachers can review and modify AI-assisted grading outputs before finalization.
 - FR16: Teachers can approve final grades and feedback for publication.
 - FR17: The system can block grade/feedback visibility until teacher approval is completed.
 - FR18: Teachers can generate follow-up practice recommendations based on identified weak areas.
+- FR18a: When AI grading fails or returns low-confidence results (e.g., blurry photo, unrecognizable handwriting), the system notifies the teacher with a clear reason and offers manual grading fallback. The teacher can re-capture the image or grade manually without losing workflow context.
+- FR18b: The system retries failed AI grading jobs up to 2 times before falling back to manual grading mode. All failures are logged with reason codes for operational monitoring.
 
 ### Parent and Student Progress Transparency
 
@@ -462,8 +503,11 @@ All functional requirements below describe user-facing capabilities delivered th
 - FR41: The system can store and retrieve assignment artifacts and related media assets.
 - FR42: The system can process asynchronous grading/analytics-related jobs.
 - FR43: Admins can configure organization-level standards-aligned instructional profiles, including profile name, standards framework, effective date, and active/inactive status, with all changes captured in audit logs.
-- FR44: The system can integrate with Google Classroom when enabled by product scope decisions.
+- FR44: Teachers can import class rosters (classes and students) from Google Classroom via one-time import. Google sign-in is supported for all users. Deeper sync (assignments, grade writeback) is deferred to post-MVP.
 - FR45: The system can provide baseline operational administration capabilities for multi-organization deployment.
+- FR46: The mobile app queues photo captures locally when offline and auto-uploads when connectivity resumes, preserving the teacher's grading workflow.
+- FR47: The mobile app caches the last-fetched dashboard data for read-only offline access across all roles.
+- FR48: The mobile client compresses and resizes captured photos (target ~2MP) before upload to reduce bandwidth and AI processing cost.
 
 ---
 
