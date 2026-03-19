@@ -1,4 +1,4 @@
-# generated: 2026-03-05
+# generated: 2026-03-20
 # project: ilm
 # project_key: NOKEY
 # tracking_system: file-system
@@ -32,14 +32,25 @@
 # - Stories can be worked in parallel if team capacity allows
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+#
+# TRACK STRUCTURE:
+# ================
+# Epics 1-3: Completed backend API work (original backend-only plan)
+# Epics 4-11: New parallel workstream (mobile app + admin web + infrastructure)
+#   Track 1 (Backend continuation): Covered by completed Epics 1-3
+#   Track 2 (Mobile + Web): Epics 4, 5, 6, 7, 8, 9
+#   Track 3 (Infrastructure): Epic 4 (bootstrap), Epic 10 (analytics), Epic 11 (compliance)
 
-generated: 2026-03-05
+generated: 2026-03-20
 project: ilm
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
 development_status:
+  # ============================================================
+  # EPIC 1: Identity, Access & Tenant Administration (COMPLETED)
+  # ============================================================
   epic-1: done
   1-1-initialize-project-from-approved-starter-template: done
   1-2-email-password-sign-in-for-organization-users: done
@@ -49,6 +60,9 @@ development_status:
   1-6-baseline-safety-and-content-control-configuration: done
   epic-1-retrospective: done
 
+  # ============================================================
+  # EPIC 2: Teacher Instruction & Assessment Workflow (COMPLETED)
+  # ============================================================
   epic-2: done
   2-1-generate-ai-draft-lesson-and-curriculum-content: done
   2-2-edit-and-save-generic-and-student-specific-plans: done
@@ -58,35 +72,109 @@ development_status:
   2-6-generate-weakness-based-practice-recommendations: done
   epic-2-retrospective: done
 
-  epic-3: in-progress
+  # ============================================================
+  # EPIC 3: Parent & Student Progress Transparency (COMPLETED)
+  # ============================================================
+  epic-3: done
   3-1-linked-guardian-and-student-progress-access: done
   3-2-outcome-explanations-and-trend-visualization: done
   3-3-strength-weakness-indicators-and-next-step-guidance: done
   3-4-parent-self-serve-notification-preferences: done
-  epic-3-retrospective: optional
+  epic-3-retrospective: done
 
-  epic-4: in-progress
-  4-1-teacher-parent-in-app-messaging-threads: backlog
-  4-2-student-and-assignment-context-linking-in-messages: backlog
-  4-3-progress-event-alerts-to-parents: backlog
-  4-4-cadence-aware-notification-delivery-engine: backlog
+  # ============================================================
+  # EPIC 4: Platform Bootstrap, Mobile Auth & Onboarding
+  # ============================================================
+  epic-4: backlog
+  4-1-initialize-turborepo-monorepo-and-project-scaffold: backlog
+  4-2-local-infrastructure-with-docker-compose: backlog
+  4-3-database-schema-initialization-and-migrations: backlog
+  4-4-mobile-app-shell-with-role-scoped-navigation: backlog
+  4-5-email-password-sign-in-on-mobile: backlog
+  4-6-google-sign-in-on-mobile: backlog
+  4-7-teacher-class-setup-and-student-management: backlog
+  4-8-invite-links-join-codes-and-parent-student-linking: backlog
+  4-9-guided-onboarding-wizards-per-role: backlog
+  4-10-coppa-consent-confirmation-gate: backlog
   epic-4-retrospective: optional
 
+  # ============================================================
+  # EPIC 5: Teacher Mobile Grading Experience
+  # ============================================================
   epic-5: backlog
-  5-1-cohort-trend-dashboard-by-grade-and-subject: backlog
-  5-2-segment-filters-for-organizational-analysis: backlog
-  5-3-communication-health-and-engagement-indicators: backlog
+  5-1-ai-grading-service-integration-contract: backlog
+  5-2-camera-capture-and-client-side-image-processing: backlog
+  5-3-ai-grading-pipeline-and-async-job-processing: backlog
+  5-4-grading-review-card-and-score-adjustment: backlog
+  5-5-grade-approval-and-visibility-control: backlog
+  5-6-ai-failure-fallback-and-manual-grading: backlog
+  5-7-practice-recommendations: backlog
+  5-8-offline-photo-queue-and-auto-upload: backlog
+  5-9-assignment-artifact-storage-and-retrieval: backlog
   epic-5-retrospective: optional
 
+  # ============================================================
+  # EPIC 6: Teacher Mobile Planning Experience
+  # ============================================================
   epic-6: backlog
-  6-1-audit-logging-for-sensitive-platform-events: backlog
-  6-2-coppa-ferpa-aligned-access-and-disclosure-controls: backlog
-  6-3-data-minimization-and-protected-data-policy-enforcement: backlog
-  6-4-global-rbac-enforcement-for-protected-capabilities: backlog
+  6-1-ai-lesson-plan-generation: backlog
+  6-2-lesson-plan-editing-and-refinement: backlog
+  6-3-student-specific-plan-generation: backlog
   epic-6-retrospective: optional
 
+  # ============================================================
+  # EPIC 7: Parent & Student Mobile Dashboards
+  # ============================================================
   epic-7: backlog
-  7-1-organization-standards-profile-administration: backlog
-  7-2-google-classroom-integration-enablement-and-sync-boundaries: backlog
-  7-3-multi-organization-operational-administration-baseline: backlog
+  7-1-parent-dashboard-with-hero-trend-indicator: backlog
+  7-2-parent-subject-detail-and-assignment-drill-down: backlog
+  7-3-parent-self-serve-progress-access: backlog
+  7-4-student-growth-home-view: backlog
+  7-5-student-subject-progress-and-tips: backlog
+  7-6-offline-dashboard-caching: backlog
   epic-7-retrospective: optional
+
+  # ============================================================
+  # EPIC 8: Contextual Messaging, Notifications & Push
+  # ============================================================
+  epic-8: backlog
+  8-1-teacher-parent-contextual-messaging: backlog
+  8-2-push-notification-infrastructure: backlog
+  8-3-notification-cadence-configuration: backlog
+  8-4-progress-event-alerts-to-parents: backlog
+  epic-8-retrospective: optional
+
+  # ============================================================
+  # EPIC 9: Admin Web Portal & School Operations
+  # ============================================================
+  epic-9: backlog
+  9-1-admin-web-portal-shell-and-navigation: backlog
+  9-2-organization-management: backlog
+  9-3-user-management-invite-activate-deactivate: backlog
+  9-4-role-assignment-and-management: backlog
+  9-5-safety-and-content-controls: backlog
+  9-6-google-classroom-roster-import: backlog
+  9-7-standards-profile-configuration: backlog
+  epic-9-retrospective: optional
+
+  # ============================================================
+  # EPIC 10: Principal & Org Analytics Dashboards
+  # ============================================================
+  epic-10: backlog
+  10-1-cohort-performance-trends-dashboard: backlog
+  10-2-segment-filters-and-drill-down: backlog
+  10-3-engagement-and-communication-health-indicators: backlog
+  10-4-pii-safe-default-analytics-views: backlog
+  epic-10-retrospective: optional
+
+  # ============================================================
+  # EPIC 11: Compliance, Audit & Data Governance
+  # ============================================================
+  epic-11: backlog
+  11-1-audit-infrastructure-and-event-capture-service: backlog
+  11-2-grade-change-audit-trail: backlog
+  11-3-role-and-permission-change-audit-trail: backlog
+  11-4-sensitive-data-access-audit-trail: backlog
+  11-5-coppa-ferpa-aligned-access-and-disclosure-controls: backlog
+  11-6-data-minimization-and-rbac-enforcement: backlog
+  epic-11-retrospective: optional

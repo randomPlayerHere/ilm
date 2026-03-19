@@ -248,7 +248,7 @@ Core architecture constraints:
 - Backend exposes a well-defined API consumed by both mobile and web clients.
 
 **Deployment topology (MVP):**
-- Backend services deployed on AWS ECS Fargate (serverless containers) — no cluster management overhead, suitable for lean team.
+- Backend services run locally via Docker Compose (PostgreSQL, MinIO, containerized API/worker) for development and demo. Service interfaces are provider-agnostic for future AWS ECS Fargate deployment when cloud credentials are available.
 - CI/CD via GitHub Actions: automated build, test, and deploy pipeline for backend services, companion web interface, and React Native mobile builds.
 - React Native mobile builds via Expo EAS Build (or Fastlane) for automated iOS (TestFlight) and Android (Play Store internal testing) distribution. App store submission pipeline must be established from sprint 1 — Apple review cycles require early provisioning profiles and signing certificates.
 - Environment tiers: development, staging, production — each with isolated databases and tenant data. Database migrations managed via versioned migration tooling (e.g., Prisma Migrate or Flyway).

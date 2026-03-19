@@ -202,69 +202,69 @@ NFR28: Security-relevant events (failed auth spikes, permission-denied anomalies
 
 ### FR Coverage Map
 
-FR1: Epic 4 - Email/password sign-in (mobile UI)
-FR2: Epic 4 - Google sign-in (mobile UI)
-FR3: Epic 9 - Organization management (admin web UI)
-FR4: Epic 9 - User invite/activate/deactivate (admin web UI)
-FR5: Epic 9 - Role assignment (admin web UI)
-FR6: Epic 9 - Org membership management (admin web UI)
-FR7: Epic 4 - Org-scoped access enforcement (infra + mobile)
-FR8: Epic 4 - Cross-tenant prevention (infra + mobile)
-FR9: Epic 9 - Safety/content controls (admin web UI)
-FR9a: Epic 4 - Class/student creation via manual or CSV
-FR9b: Epic 4 - Parent invite links pre-linked to student
-FR9c: Epic 4 - Student join codes
-FR9d: Epic 4 - Guided onboarding per role
-FR9e: Epic 4 - COPPA consent confirmation gate
-FR10: Epic 6 - AI lesson/curriculum generation (mobile UI)
-FR11: Epic 6 - Edit AI-generated content (mobile UI)
-FR12: Epic 6 - Student-specific plans (mobile UI)
-FR13: Epic 5 - Assignment photo capture (mobile camera)
-FR14: Epic 5 - AI grading suggestions (mobile UI)
-FR15: Epic 5 - Teacher review/modify AI grading (mobile UI)
-FR16: Epic 5 - Teacher grade approval (mobile UI)
-FR17: Epic 5 - Visibility blocked until approval
-FR18: Epic 5 - Practice recommendations (mobile UI)
-FR18a: Epic 5 - AI failure fallback to manual grading
-FR18b: Epic 5 - AI grading retry (2x) before manual fallback
-FR19: Epic 7 - Parent progress dashboard (mobile UI)
-FR20: Epic 7 - Student progress dashboard (mobile UI)
-FR21: Epic 7 - Assessment outcomes with explanations
-FR22: Epic 7 - Longitudinal progress trends
-FR23: Epic 7 - Strength/weakness indicators
-FR24: Epic 8 - Parent notification preference controls
-FR25: Epic 7 - Parent self-serve progress access
-FR26: Epic 7 - Student feedback and next-step guidance
-FR27: Epic 8 - Teacher-parent in-app messaging
-FR28: Epic 8 - Student/assignment-context message linking
-FR29: Epic 8 - Progress event alerts to parents
-FR30: Epic 8 - Notification cadence configuration
-FR31: Epic 10 - Cohort performance trends
-FR32: Epic 10 - Organizational segment filters
-FR33: Epic 10 - PII-safe default analytics views
-FR34: Epic 10 - Engagement/communication health indicators
-FR35: Epic 11 - Grade change audit logs
-FR36: Epic 11 - Role/permission audit logs
-FR37: Epic 11 - Sensitive access audit logs
-FR38: Epic 11 - COPPA/FERPA-aligned controls
-FR39: Epic 11 - Data minimization enforcement
-FR40: Epic 11 - Protected-capability RBAC enforcement
-FR41: Epic 5 - Assignment artifact storage/retrieval
-FR42: Epic 5 - Async grading/analytics job processing
-FR43: Epic 9 - Standards profile administration
-FR44: Epic 9 - Google Classroom roster import
-FR45: Epic 9 - Multi-organization operational baseline
-FR46: Epic 5 - Offline photo queue with auto-upload
-FR47: Epic 7 - Cached dashboard data for offline access
-FR48: Epic 5 - Client-side image compression (~2MP)
+FR1: Epic 4 Story 4.5 - Email/password sign-in (mobile UI)
+FR2: Epic 4 Story 4.6 - Google sign-in (mobile UI)
+FR3: Epic 9 Story 9.2 - Organization management (admin web UI)
+FR4: Epic 9 Story 9.3 - User invite/activate/deactivate (admin web UI)
+FR5: Epic 9 Story 9.4 - Role assignment (admin web UI)
+FR6: Epic 9 Story 9.2/9.3 - Org membership management (admin web UI)
+FR7: Epic 4 Story 4.2/4.3 - Org-scoped access enforcement (local infra + RBAC middleware)
+FR8: Epic 4 Story 4.2/4.3 - Cross-tenant prevention (RBAC middleware + DB isolation)
+FR9: Epic 9 Story 9.5 - Safety/content controls (admin web UI)
+FR9a: Epic 4 Story 4.7 - Class/student creation via manual or CSV
+FR9b: Epic 4 Story 4.8 - Parent invite links pre-linked to student
+FR9c: Epic 4 Story 4.8 - Student join codes
+FR9d: Epic 4 Story 4.9 - Guided onboarding per role
+FR9e: Epic 4 Story 4.10 - COPPA consent confirmation gate
+FR10: Epic 6 Story 6.1 - AI lesson/curriculum generation (mobile UI)
+FR11: Epic 6 Story 6.2 - Edit AI-generated content (mobile UI)
+FR12: Epic 6 Story 6.3 - Student-specific plans (mobile UI)
+FR13: Epic 5 Story 5.2 - Assignment photo capture (mobile camera)
+FR14: Epic 5 Story 5.1/5.3 - AI grading suggestions (contract + pipeline)
+FR15: Epic 5 Story 5.4 - Teacher review/modify AI grading (mobile UI)
+FR16: Epic 5 Story 5.5 - Teacher grade approval (mobile UI)
+FR17: Epic 5 Story 5.5 - Visibility blocked until approval
+FR18: Epic 5 Story 5.7 - Practice recommendations (mobile UI)
+FR18a: Epic 5 Story 5.6 - AI failure fallback to manual grading
+FR18b: Epic 5 Story 5.1/5.6 - AI grading retry (2x) before manual fallback
+FR19: Epic 7 Story 7.1 - Parent progress dashboard (mobile UI)
+FR20: Epic 7 Story 7.4 - Student progress dashboard (mobile UI)
+FR21: Epic 7 Story 7.2 - Assessment outcomes with explanations
+FR22: Epic 7 Story 7.2 - Longitudinal progress trends
+FR23: Epic 7 Story 7.2/7.5 - Strength/weakness indicators
+FR24: Epic 8 Story 8.3 - Parent notification preference controls
+FR25: Epic 7 Story 7.3 - Parent self-serve progress access
+FR26: Epic 7 Story 7.5 - Student feedback and next-step guidance
+FR27: Epic 8 Story 8.1 - Teacher-parent in-app messaging
+FR28: Epic 8 Story 8.1 - Student/assignment-context message linking
+FR29: Epic 8 Story 8.4 - Progress event alerts to parents
+FR30: Epic 8 Story 8.3 - Notification cadence configuration
+FR31: Epic 10 Story 10.1 - Cohort performance trends
+FR32: Epic 10 Story 10.2 - Organizational segment filters
+FR33: Epic 10 Story 10.4 - PII-safe default analytics views
+FR34: Epic 10 Story 10.3 - Engagement/communication health indicators
+FR35: Epic 11 Story 11.2 - Grade change audit logs
+FR36: Epic 11 Story 11.3 - Role/permission audit logs
+FR37: Epic 11 Story 11.4 - Sensitive access audit logs
+FR38: Epic 11 Story 11.5 - COPPA/FERPA-aligned controls
+FR39: Epic 11 Story 11.6 - Data minimization enforcement
+FR40: Epic 11 Story 11.1/11.6 - Protected-capability RBAC enforcement
+FR41: Epic 5 Story 5.9 - Assignment artifact storage/retrieval
+FR42: Epic 5 Story 5.3 - Async grading/analytics job processing
+FR43: Epic 9 Story 9.7 - Standards profile administration
+FR44: Epic 9 Story 9.6 - Google Classroom roster import
+FR45: Epic 9 Story 9.2 - Multi-organization operational baseline
+FR46: Epic 5 Story 5.8 - Offline photo queue with auto-upload
+FR47: Epic 7 Story 7.6 - Cached dashboard data for offline access
+FR48: Epic 5 Story 5.2 - Client-side image compression (~2MP)
 
 ## Epic List
 
-### Epic 4: Platform Bootstrap, Mobile Auth & Onboarding
-Teachers, parents, and students can install the mobile app, sign in (email/password or Google), complete guided onboarding, and land on their role-appropriate home screen. Teachers can create classes (manually/CSV), generate parent invite links, and student join codes. The platform is deployed on real infrastructure with CI/CD.
+### Epic 4: Platform Bootstrap, Mobile Auth & Onboarding (10 stories)
+Teachers, parents, and students can install the mobile app, sign in (email/password or Google), complete guided onboarding, and land on their role-appropriate home screen. Teachers can create classes (manually/CSV), generate parent invite links, and student join codes. The platform runs locally via Docker Compose (PostgreSQL, MinIO, containerized API/worker), database schema initialized, RBAC middleware operational, push notification infra ready. Service interfaces are provider-agnostic for future cloud deployment.
 **FRs covered:** FR1, FR2, FR7, FR8, FR9a, FR9b, FR9c, FR9d, FR9e
 
-### Epic 5: Teacher Mobile Grading Experience
+### Epic 5: Teacher Mobile Grading Experience (9 stories)
 Teachers can photograph student work on their phone, receive AI grading suggestions, review/adjust, approve grades, and handle AI failures gracefully. Works offline with queued uploads and client-side image compression.
 **FRs covered:** FR13, FR14, FR15, FR16, FR17, FR18, FR18a, FR18b, FR41, FR42, FR46, FR48
 
@@ -288,13 +288,13 @@ Admins can manage organizations, users, roles, and safety settings via the web i
 Principals and org managers can view cohort-level performance trends by grade/subject, apply segment filters, and monitor engagement/communication health — all privacy-safe.
 **FRs covered:** FR31, FR32, FR33, FR34
 
-### Epic 11: Compliance, Audit & Data Governance
-The platform maintains immutable audit trails for grade changes, role changes, and sensitive access. COPPA/FERPA-aligned access/disclosure controls are operational. Data minimization and RBAC enforcement hardened across all protected capabilities.
+### Epic 11: Compliance, Audit & Data Governance (6 stories)
+The platform maintains immutable audit trails for grade changes, role changes, and sensitive access. Audit infrastructure with append-only schema and async event capture is operational. COPPA/FERPA-aligned access/disclosure controls are operational. Data minimization and RBAC enforcement hardened across all protected capabilities.
 **FRs covered:** FR35, FR36, FR37, FR38, FR39, FR40
 
 ## Epic 4: Platform Bootstrap, Mobile Auth & Onboarding
 
-Teachers, parents, and students can install the mobile app, sign in (email/password or Google), complete guided onboarding, and land on their role-appropriate home screen. Teachers can create classes (manually/CSV), generate parent invite links, and student join codes. The platform is deployed on real infrastructure with CI/CD.
+Teachers, parents, and students can install the mobile app, sign in (email/password or Google), complete guided onboarding, and land on their role-appropriate home screen. Teachers can create classes (manually/CSV), generate parent invite links, and student join codes. The platform runs locally via Docker Compose with provider-agnostic service interfaces.
 
 ### Story 4.1: Initialize Turborepo Monorepo and Project Scaffold
 
@@ -319,35 +319,86 @@ So that all teams can develop, build, and share code across surfaces from a sing
 **Then** Tamagui design system is installed with base theme tokens (colors, typography, spacing from UX spec)
 **And** TypeScript is configured across all workspaces with shared tsconfig base
 
-### Story 4.2: AWS Infrastructure and CI/CD Pipeline
+### Story 4.2: Local Infrastructure with Docker Compose
 
 As a developer,
-I want AWS infrastructure provisioned and CI/CD pipelines configured,
-So that the team can deploy backend services and client apps to real environments.
+I want local infrastructure running via Docker Compose with PostgreSQL, MinIO (S3-compatible), and the FastAPI backend containerized,
+So that the team can develop, test, and demo the full platform on a single machine without cloud credentials.
 
 **Acceptance Criteria:**
 
-**Given** Terraform modules are created
-**When** infrastructure is provisioned for the dev environment
-**Then** ECS Fargate services (API + worker), RDS PostgreSQL with RDS Proxy, S3 bucket, SQS queues with DLQ, CloudFront distribution, ECR repos, and Secrets Manager entries are created
-**And** environment tiers (dev, staging, prod) are defined with isolated databases
+**Given** Docker Compose configuration is created
+**When** a developer runs `docker compose up`
+**Then** the following services start: PostgreSQL 16.x, MinIO (S3-compatible object storage), FastAPI API service, and FastAPI worker service
+**And** all services are healthy and connected within 30 seconds
 
-**Given** GitHub Actions workflows are created
-**When** code is pushed to the repository
-**Then** the CI pipeline runs lint, test, and build steps for all workspaces
-**And** on merge to main, the CD pipeline builds Docker images, pushes to ECR, and deploys to ECS staging
-
-**Given** Expo EAS Build is configured
-**When** a mobile build is triggered
-**Then** iOS builds are distributed to TestFlight and Android builds to Play Store internal testing
-**And** Apple provisioning profiles, signing certificates, and Play Console registration are set up
+**Given** the local stack is running
+**When** the API service starts
+**Then** Alembic migrations run automatically against the local PostgreSQL instance
+**And** the API health endpoint returns 200
 
 **Given** the existing FastAPI backend
 **When** Dockerfiles are created for API and worker services
-**Then** both services build successfully and run on ECS Fargate with health checks passing
-**And** Alembic migrations run against RDS PostgreSQL on deployment
+**Then** both services build successfully and run in Docker Compose with health checks passing
+**And** hot-reload is supported for local development via volume mounts
 
-### Story 4.3: Mobile App Shell with Role-Scoped Navigation
+**Given** the mobile app needs to upload assignment photos
+**When** the pre-signed URL service is called
+**Then** it generates time-limited MinIO pre-signed upload URLs scoped to the user's organization path
+**And** URLs expire after 15 minutes and enforce org-scoped storage paths
+**And** the same S3 client code works against both MinIO (local) and AWS S3 (future cloud)
+
+**Given** the platform needs to send transactional emails (invitations, password resets)
+**When** the email service is invoked locally
+**Then** emails are logged to the console (or routed to Mailhog if configured) for development visibility
+**And** the email service interface is provider-agnostic so swapping to SES later requires only config change
+
+**Given** the API receives any request to a protected endpoint
+**When** the RBAC authorization middleware evaluates the request
+**Then** the middleware validates: JWT authenticity, user role, organization membership, and resource ownership
+**And** unauthorized requests are rejected with 403 and logged
+**And** no protected endpoint is accessible without passing through the middleware
+
+**Given** the mobile app launches for the first time
+**When** the user grants notification permissions
+**Then** a device token is registered with FCM (Android) or APNs (iOS) and stored server-side linked to the user's account
+**And** token refresh/rotation is handled automatically without user action
+
+**Given** async jobs need processing (grading, notifications)
+**When** a job is dispatched
+**Then** it is processed via FastAPI BackgroundTasks (or ARQ with Redis if added later)
+**And** the job interface is queue-agnostic so swapping to SQS later requires only config change
+
+### Story 4.3: Database Schema Initialization and Migrations
+
+As a developer,
+I want all core database tables created via versioned Alembic migrations,
+So that application code can persist and query data from the first story onward.
+
+**Acceptance Criteria:**
+
+**Given** the RDS PostgreSQL instance is provisioned (Story 4.2)
+**When** the initial Alembic migration is executed
+**Then** the following core tables are created: organizations, users, user_org_memberships, roles, classes, students, class_enrollments, parent_student_links, consent_records, audit_events
+**And** all tables with tenant-scoped data include an `org_id` column with a foreign key to organizations
+**And** row-level org isolation is enforceable via query filters or RLS policies
+
+**Given** the initial migration has run
+**When** the API starts
+**Then** all models map correctly to the created tables
+**And** CRUD operations work for all core entities in automated tests
+
+**Given** future stories need additional tables or columns
+**When** a developer generates a new Alembic migration
+**Then** it applies incrementally on top of the existing schema
+**And** rollback is supported for the most recent migration
+
+**Given** the audit_events table is created
+**When** an audit record is inserted
+**Then** the table supports: event_type, actor_id, target_entity, target_id, org_id, timestamp, payload (JSONB), and a hash column for tamper-evidence
+**And** the table has no UPDATE or DELETE permissions for application roles (append-only)
+
+### Story 4.4: Mobile App Shell with Role-Scoped Navigation
 
 As a user,
 I want to open the mobile app and see navigation tailored to my role,
@@ -374,7 +425,7 @@ So that I can access the features relevant to me without confusion.
 **And** skeleton loading states appear for data-dependent screens
 **And** the app follows the "Clear Path" design direction with warm off-white background (#FAFAF5), surface cards (#FFFFFF), and sage green primary (#2D6A4F)
 
-### Story 4.4: Email/Password Sign-In on Mobile
+### Story 4.5: Email/Password Sign-In on Mobile
 
 As a school user,
 I want to sign in with my email and password on the mobile app,
@@ -402,7 +453,7 @@ So that I can securely access Teacher OS on my phone.
 **Then** the token is silently refreshed using the stored refresh token
 **And** the user is not interrupted or logged out
 
-### Story 4.5: Google Sign-In on Mobile
+### Story 4.6: Google Sign-In on Mobile
 
 As a school user,
 I want to sign in with my Google account on the mobile app,
@@ -425,7 +476,7 @@ So that I can use my institution account for quick access.
 **Then** no account is created or modified
 **And** the sign-in screen is in a clean state ready for retry
 
-### Story 4.6: Teacher Class Setup and Student Management
+### Story 4.7: Teacher Class Setup and Student Management
 
 As a teacher,
 I want to create classes and add students manually or via CSV import,
@@ -453,7 +504,7 @@ So that I can set up my classroom and begin using the platform.
 **Then** they see all enrolled students with names and status
 **And** can remove a student from the class
 
-### Story 4.7: Invite Links, Join Codes and Parent-Student Linking
+### Story 4.8: Invite Links, Join Codes and Parent-Student Linking
 
 As a teacher,
 I want to generate parent invite links and student join codes,
@@ -481,7 +532,7 @@ So that parents are automatically connected to their child and students can join
 **Then** the system shows an appropriate message (already used / expired)
 **And** does not create duplicate linkages
 
-### Story 4.8: Guided Onboarding Wizards per Role
+### Story 4.9: Guided Onboarding Wizards per Role
 
 As a new user,
 I want a guided first-time setup flow tailored to my role,
@@ -491,13 +542,13 @@ So that I experience the core value of the product within my first few minutes.
 
 **Given** a teacher signs in for the first time
 **When** onboarding is triggered
-**Then** they see a 2-3 step wizard: create/select class → add first students (or skip) → preview grading experience
-**And** the wizard delivers a value moment (e.g., preview of AI grading or class setup confirmation)
+**Then** they see a 2-3 step wizard: create/select class → add first students (or skip) → class setup confirmation with student count
+**And** the wizard delivers a value moment (class is created and ready, students are enrolled)
 
 **Given** a parent signs in for the first time (via invite link)
 **When** onboarding is triggered
 **Then** they see a 2-3 step wizard: confirm linked child → see dashboard preview → set notification preference
-**And** the wizard delivers a value moment (child's dashboard is visible)
+**And** the wizard delivers a value moment (child's dashboard is visible with any available data)
 
 **Given** a student signs in for the first time
 **When** onboarding is triggered
@@ -509,12 +560,12 @@ So that I experience the core value of the product within my first few minutes.
 **Then** they see a setup wizard: create organization → invite first teacher → confirmation
 **And** the wizard includes progress indicators and clear step labels
 
-**Given** a downstream feature is not yet available (e.g., grading before Epic 5 ships)
-**When** the onboarding wizard references that feature
-**Then** the wizard shows a preview or "coming soon" placeholder with context
-**And** does not present broken or empty screens
+**Given** the onboarding wizard completes for any role
+**When** the user finishes all steps
+**Then** they land on their role-appropriate home tab in a ready state
+**And** the wizard does not reference or depend on features from future epics — all value moments are achievable with Epic 4 capabilities alone
 
-### Story 4.9: COPPA Consent Confirmation Gate
+### Story 4.10: COPPA Consent Confirmation Gate
 
 As an admin,
 I want to confirm that parental consent has been collected before activating accounts for children under 13,
@@ -536,3 +587,995 @@ So that the platform meets COPPA compliance requirements.
 **When** the consent record is queried
 **Then** the confirmation is auditable with actor, timestamp, and student identity
 **And** the consent status is visible in the admin's student management view
+
+## Epic 5: Teacher Mobile Grading Experience
+
+Teachers can photograph student work on their phone, receive AI grading suggestions, review/adjust, approve grades, and handle AI failures gracefully. Works offline with queued uploads and client-side image compression.
+
+### Story 5.1: AI Grading Service Integration Contract
+
+As a developer,
+I want the AI grading service contract defined with endpoints, error codes, confidence scoring, and mock endpoints,
+So that all grading stories can develop against a stable, testable interface.
+
+**Acceptance Criteria:**
+
+**Given** the AI grading service needs to be integrated
+**When** the service contract is defined
+**Then** it specifies: input schema (image URL, rubric context, standards profile), output schema (suggested score, feedback text, rubric breakdown, confidence level, practice recommendations), and error response schema (error code, reason, retryable flag)
+
+**Given** the contract defines confidence levels
+**When** the AI returns a result
+**Then** confidence is one of: high (green), medium (amber), low (red), with a numeric score (0-1) and a human-readable reason for non-high confidence
+
+**Given** the contract defines error codes
+**When** the AI fails to process an image
+**Then** specific error codes are returned: `IMAGE_BLURRY`, `IMAGE_UNREADABLE`, `MODEL_TIMEOUT`, `MODEL_ERROR`, `RATE_LIMITED`
+**And** each code includes a `retryable` boolean and a user-facing reason string
+
+**Given** the contract defines retry behavior
+**When** a retryable error occurs
+**Then** the system retries up to 2 times with exponential backoff (2s, 4s)
+**And** after 2 failures, the job is marked as `FAILED` and routed to DLQ
+
+**Given** development needs to proceed before the AI model is production-ready
+**When** mock endpoints are deployed
+**Then** they return realistic grading responses with configurable confidence levels and error scenarios
+**And** mock mode is toggled via environment variable (`AI_MOCK_MODE=true`)
+
+### Story 5.2: Camera Capture and Client-Side Image Processing
+
+As a teacher,
+I want to photograph student work using the in-app camera with alignment guides and automatic image optimization,
+So that I can quickly capture high-quality assignment images ready for AI grading.
+
+**Acceptance Criteria:**
+
+**Given** a teacher taps the persistent camera FAB (56px, primary green, bottom-right on all teacher screens) or navigates to the Grade tab
+**When** the camera opens
+**Then** it displays a full-screen camera view with alignment guide overlay (document border frame)
+**And** the viewfinder includes a "Position assignment within frame" hint text
+
+**Given** the teacher captures a photo
+**When** the image is processed client-side
+**Then** the image is compressed to ~2MP resolution before any upload
+**And** the compressed file size is suitable for mobile upload on typical school Wi-Fi
+
+**Given** the captured photo is blurry or poorly lit
+**When** client-side quality analysis completes (< 1 second)
+**Then** an inline prompt appears: "Photo may be blurry — Retake?"
+**And** the teacher can choose to retake or proceed anyway
+
+**Given** the teacher accepts the captured photo
+**When** they confirm capture
+**Then** the photo is associated with the selected student and assignment context
+**And** the UI transitions to a processing state (skeleton loading)
+
+### Story 5.3: AI Grading Pipeline and Async Job Processing
+
+As a teacher,
+I want my captured assignment photos to be automatically analyzed by AI and return grading suggestions,
+So that I can review AI-suggested grades instead of grading from scratch.
+
+**Acceptance Criteria:**
+
+**Given** a photo is uploaded (or queued for upload)
+**When** the server receives the image
+**Then** an async grading job is enqueued via SQS for AI processing
+**And** the teacher sees a skeleton loading state on the grading card (< 10 seconds target)
+
+**Given** the AI grading job completes successfully
+**When** results are returned
+**Then** the GradingCard displays: photo thumbnail (80x80px), suggested score, AI-generated feedback text, rubric breakdown (collapsible), and confidence indicator (high/medium/low with color coding)
+**And** the teacher receives a push notification if they navigated away from the grading screen
+
+**Given** multiple photos are submitted in a batch
+**When** AI processing completes for each
+**Then** results are delivered individually as they complete (not blocked on the full batch)
+**And** a batch progress indicator shows "3 of 8 graded" style progress
+
+**Given** the AI processing job fails after internal retries
+**When** the failure is reported
+**Then** the job is routed to the dead-letter queue (DLQ) for investigation
+**And** the teacher is notified of the failure with actionable options (Story 5.5)
+
+### Story 5.4: Grading Review Card and Score Adjustment
+
+As a teacher,
+I want to review, modify, and refine AI-suggested grades with easy controls,
+So that I maintain full control over final grades while benefiting from AI assistance.
+
+**Acceptance Criteria:**
+
+**Given** a GradingCard is displayed with AI suggestions
+**When** the teacher reviews the card
+**Then** they see the photo thumbnail, suggested score with +/- adjustment buttons, editable feedback text field, collapsible rubric breakdown by criterion, and confidence badge (green high / amber medium / red low)
+
+**Given** the teacher wants to adjust the score
+**When** they tap +/- buttons or directly edit the score field
+**Then** the score updates immediately with no lag
+**And** the rubric breakdown reflects the adjusted total
+
+**Given** the teacher wants to modify AI-generated feedback
+**When** they tap the feedback text area
+**Then** the text becomes editable with the keyboard appearing
+**And** the original AI suggestion is preserved (undo available)
+
+**Given** the AI confidence is medium or low (amber/red badge)
+**When** the GradingCard is displayed
+**Then** a note appears: "AI is less certain about this one — please review carefully"
+**And** the review controls are identical (no reduced functionality)
+
+### Story 5.5: Grade Approval and Visibility Control
+
+As a teacher,
+I want to explicitly approve grades before they become visible to parents and students,
+So that no AI-suggested grade is shared without my review and consent.
+
+**Acceptance Criteria:**
+
+**Given** a teacher has reviewed and optionally adjusted a grade
+**When** they tap the "Approve" button
+**Then** the grade status transitions to "Published"
+**And** a success animation plays (checkmark + brief haptic feedback)
+**And** the next pending assignment auto-loads for continuous grading flow
+
+**Given** a grade has NOT been approved by the teacher
+**When** a parent or student views their dashboard
+**Then** the unapproved grade is NOT visible in any form
+**And** no notification about this grade is sent to parents or students
+
+**Given** all assignments in a grading batch are approved
+**When** the last approval is submitted
+**Then** an "All caught up!" celebration screen appears with a summary (X grades approved, average score, time spent)
+
+**Given** a teacher approves a grade
+**When** the approval is persisted
+**Then** the approval record includes teacher identity, timestamp, original AI suggestion, and final approved values
+**And** this record is available for audit (Epic 11)
+
+### Story 5.6: AI Failure Fallback and Manual Grading
+
+As a teacher,
+I want clear options when AI grading fails so I can continue grading without interruption,
+So that AI failures never create dead ends in my workflow.
+
+**Acceptance Criteria:**
+
+**Given** the AI grading attempt fails on first try
+**When** the system detects the failure
+**Then** the system automatically retries once (up to 2 total attempts)
+**And** the teacher sees a "Still processing..." indicator during retry
+
+**Given** AI grading fails after 2 attempts
+**When** the final failure is reported
+**Then** the GradingCard displays: "Couldn't analyze this one" with a reason (e.g., "Handwriting unclear in bottom section")
+**And** two action buttons appear: "Retake Photo" and "Grade Manually"
+
+**Given** the teacher taps "Grade Manually"
+**When** the manual grading view opens
+**Then** the original photo is displayed alongside empty score and feedback fields
+**And** all workflow context is preserved (student, assignment, class) — no data is lost
+**And** the rubric criteria are listed for manual scoring
+
+**Given** the teacher taps "Retake Photo"
+**When** the camera reopens
+**Then** the student and assignment context is preserved
+**And** the new photo replaces the failed one and triggers a fresh AI grading attempt
+
+### Story 5.7: Practice Recommendations
+
+As a teacher,
+I want AI-generated practice recommendations included with grading results,
+So that I can share actionable next steps with students alongside their grades.
+
+**Acceptance Criteria:**
+
+**Given** AI grading completes successfully for an assignment
+**When** the GradingCard is displayed
+**Then** a "Recommended Practice" section appears below the rubric breakdown
+**And** it contains 1-3 specific, actionable practice suggestions based on the student's performance gaps
+
+**Given** the teacher reviews practice recommendations
+**When** they want to modify a recommendation
+**Then** they can edit the recommendation text before approval
+**And** edited recommendations are marked as "Teacher modified" in the record
+
+**Given** a grade is approved with practice recommendations
+**When** the approval is persisted
+**Then** the practice recommendations are stored alongside the grade record in the database
+**And** the recommendations are retrievable via the student progress API for downstream consumers (dashboards, tips views)
+
+### Story 5.8: Offline Photo Queue and Auto-Upload
+
+As a teacher,
+I want to capture assignment photos even without internet connectivity,
+So that I can grade in classrooms with poor or no Wi-Fi without interrupting my workflow.
+
+**Acceptance Criteria:**
+
+**Given** the device has no internet connectivity
+**When** the teacher captures an assignment photo
+**Then** the photo is saved to a local queue with a "Pending" badge on the assignment card
+**And** the teacher can continue capturing additional photos for other students
+
+**Given** photos are queued locally
+**When** internet connectivity is restored
+**Then** queued photos auto-upload in the order they were captured
+**And** AI grading jobs are triggered automatically for each uploaded photo
+**And** the teacher receives push notifications as AI results arrive
+
+**Given** a teacher has offline-queued photos
+**When** they view their grading queue
+**Then** pending uploads show a "Waiting for connection" status
+**And** the queue count is visible (e.g., "3 photos pending upload")
+
+**Given** an upload fails after connectivity is restored
+**When** the retry mechanism activates
+**Then** the system retries with exponential backoff
+**And** after 3 failed attempts, shows "Upload failed — Tap to retry" on the specific item
+
+### Story 5.9: Assignment Artifact Storage and Retrieval
+
+As a teacher,
+I want captured assignment photos and grading records stored reliably and retrievable,
+So that I can reference past work and maintain records for the school year.
+
+**Acceptance Criteria:**
+
+**Given** the mobile app has a photo ready for upload
+**When** it requests an upload URL from the API
+**Then** the API returns a time-limited S3 pre-signed upload URL (from Story 4.2 pre-signed URL service) scoped to the org's storage path
+**And** the mobile app uploads the image directly to S3 via the pre-signed URL
+**And** the storage path follows the pattern: `{org_id}/{class_id}/{student_id}/{assignment_id}/`
+
+**Given** a teacher views a student's assignment history
+**When** they select a past assignment
+**Then** the original photo, final grade, feedback, rubric scores, and practice recommendations are displayed
+**And** the photo loads via CloudFront CDN with acceptable latency
+
+**Given** stored artifacts
+**When** retention policies are evaluated
+**Then** artifacts are retained for the configured school year duration
+**And** access is scoped to authorized users within the organization (org-scoped RBAC)
+
+## Epic 6: Teacher Mobile Planning Experience
+
+Teachers can generate AI-assisted lesson plans, edit/refine them, and create student-specific plans from their phone.
+
+### Story 6.1: AI Lesson Plan Generation
+
+As a teacher,
+I want to generate lesson plans using AI by specifying subject, grade level, topic, and duration,
+So that I can quickly create structured lesson plans without starting from scratch.
+
+**Acceptance Criteria:**
+
+**Given** a teacher navigates to the Plan tab
+**When** they tap "Create Lesson Plan"
+**Then** a form appears with fields: subject, grade level, topic/standard, duration, and optional notes
+**And** the form pre-fills subject and grade from the teacher's active class context
+
+**Given** the teacher submits the lesson plan request
+**When** AI processing begins
+**Then** a skeleton loading state appears (target < 15 seconds)
+**And** the generated plan includes: learning objectives, materials list, activity sequence with time allocations, assessment suggestions, and differentiation notes
+
+**Given** AI generation completes
+**When** the plan is displayed
+**Then** it renders as a structured card with collapsible sections (objectives, activities, materials, assessment)
+**And** the plan is saved as a draft automatically
+
+**Given** AI generation fails
+**When** the failure is reported
+**Then** the teacher sees "Couldn't generate plan — try adjusting your inputs" with a "Retry" button
+**And** the original form inputs are preserved for modification
+
+### Story 6.2: Lesson Plan Editing and Refinement
+
+As a teacher,
+I want to edit, rearrange, and refine AI-generated lesson plans,
+So that I can tailor plans to my classroom's specific needs and my teaching style.
+
+**Acceptance Criteria:**
+
+**Given** a teacher views a generated or saved lesson plan
+**When** they tap any section (objectives, activities, materials, assessment)
+**Then** that section becomes editable inline with a rich text editor
+**And** changes auto-save with a "Saved" indicator
+
+**Given** a teacher wants to regenerate a specific section
+**When** they long-press or tap a "Regenerate" icon on a section
+**Then** only that section is re-generated by AI while preserving the rest of the plan
+**And** the previous version of that section is available via undo
+
+**Given** a teacher has edited a plan
+**When** they view the plan list on the Curriculum Planner screen
+**Then** plans are displayed as unit cards in a calendar/timeline view
+**And** each card shows title, subject, date, and status (draft/final)
+
+**Given** a teacher finalizes a plan
+**When** they mark it as "Final"
+**Then** the plan is locked from accidental edits (but can be unlocked)
+**And** it appears in their teaching calendar for the scheduled date
+
+### Story 6.3: Student-Specific Plan Generation
+
+As a teacher,
+I want to generate individualized learning plans for specific students based on their performance data,
+So that I can provide targeted support for students who are struggling or excelling.
+
+**Acceptance Criteria:**
+
+**Given** a teacher selects a student from their class roster
+**When** they tap "Create Student Plan"
+**Then** the AI uses that student's grading history, strengths, weaknesses, and practice recommendation patterns to generate a personalized plan
+**And** the plan includes: focus areas, recommended activities, adjusted difficulty level, and progress milestones
+
+**Given** the student has insufficient grading data (fewer than 3 graded assignments)
+**When** the teacher requests a student-specific plan
+**Then** the system shows "Not enough data yet — grade a few more assignments to unlock personalized plans"
+**And** offers to create a generic plan for the student's grade level instead
+
+**Given** a student-specific plan is generated
+**When** the teacher reviews it
+**Then** the plan is editable with the same inline editing as standard lesson plans (Story 6.2)
+**And** the plan is linked to the student record for reference in future grading and parent messaging
+
+**Given** a student-specific plan exists
+**When** the teacher views that student's profile
+**Then** active plans are visible with progress indicators
+**And** the plan can be shared with the parent via the messaging system (Epic 8)
+
+## Epic 7: Parent & Student Mobile Dashboards
+
+Parents can answer "Is my child improving?" via the hero trend indicator and drill into subject details. Students see their growth view with strengths, focus areas, and actionable tips. Dashboard data cached for offline access.
+
+### Story 7.1: Parent Dashboard with Hero Trend Indicator
+
+As a parent,
+I want to open the app and immediately see whether my child is improving with a clear visual signal,
+So that I get the answer to "Is my child improving?" before any scrolling.
+
+**Acceptance Criteria:**
+
+**Given** a parent opens the app and has a linked child with grading data
+**When** the Dashboard tab loads
+**Then** a hero `TrendIndicator` is displayed prominently at the top: a large up/down/steady arrow with a one-sentence explanation (e.g., "Ava is improving in Math this month, with strong computation skills")
+**And** below the hero: subject summary cards showing per-subject trend arrow + latest score
+
+**Given** a parent has multiple linked children
+**When** they view the dashboard
+**Then** a child selector appears at the top allowing them to switch between children
+**And** the dashboard updates to reflect the selected child's data
+
+**Given** new grades have been approved since the parent's last visit
+**When** the dashboard loads
+**Then** affected subject cards show a subtle "New" badge
+**And** trend indicators animate when data changes (arrow direction transition)
+
+**Given** the parent's child has fewer than 3 graded assignments
+**When** the dashboard loads
+**Then** the hero section shows "We're building your child's learning picture — trends appear after a few more graded assignments"
+**And** available data is still displayed on subject cards without a trend arrow
+
+### Story 7.2: Parent Subject Detail and Assignment Drill-Down
+
+As a parent,
+I want to drill into a specific subject to see longitudinal progress and individual assignments,
+So that I can understand my child's trajectory and the context behind their grades.
+
+**Acceptance Criteria:**
+
+**Given** a parent taps a subject card on the dashboard
+**When** the Subject Detail screen loads
+**Then** it displays a `GrowthTimeline` chart showing longitudinal progress (scores over time)
+**And** below the chart: strengths list, weaknesses/focus areas list, and recent assignments
+
+**Given** a parent taps a specific assignment in the subject detail
+**When** the Assignment Detail screen loads
+**Then** it shows: score, teacher feedback, AI-generated explanation of performance, and practice recommendations
+**And** a "Message Teacher" contextual action button is available linked to this assignment
+
+**Given** the growth timeline shows a downward trend in a subject
+**When** the parent views the focus areas
+**Then** areas are framed as "areas for focus" with actionable context (not failure language)
+**And** warm amber palette is used for focus areas (no red)
+
+### Story 7.3: Parent Self-Serve Progress Access
+
+As a parent,
+I want to access my child's progress data anytime without needing to contact the teacher,
+So that I stay informed on my own schedule and reduce unnecessary teacher communication.
+
+**Acceptance Criteria:**
+
+**Given** a parent is authenticated and has a linked child
+**When** they navigate to any progress screen
+**Then** data is available without requiring teacher action or permission beyond initial grade approval
+**And** data updates via background refresh (silent push) with pull-to-refresh for manual update
+
+**Given** a parent views progress data
+**When** the data was last updated more than 24 hours ago
+**Then** a "Last updated: [timestamp]" indicator is visible
+**And** pull-to-refresh triggers a fresh data fetch
+
+**Given** a digest notification fires per the parent's configured cadence
+**When** the parent taps the notification
+**Then** they are deep-linked to the dashboard showing the relevant updates
+
+### Story 7.4: Student Growth Home View
+
+As a student,
+I want to see my growth and improvements with encouraging, ownership-building language,
+So that I feel motivated and know what to work on next.
+
+**Acceptance Criteria:**
+
+**Given** a student opens the app
+**When** the Growth Home tab loads
+**Then** they see: an overall trend indicator (growth-framed, never punitive), top 3 recent improvements highlighted, and a "Next challenge" card with one clear actionable next step
+
+**Given** the student's data shows below-average performance in a subject
+**When** that subject appears in the growth view
+**Then** it is framed as a "focus area" with warm amber palette — never red, never "failing"
+**And** language is forward-looking: "You're building skills in [subject]" not "You're behind in [subject]"
+
+**Given** the student has recent improvements
+**When** improvements are displayed
+**Then** they use celebratory language: "You've improved," "Great progress," "Your streak"
+**And** gold accent color (#DDA15E) is used for growth celebrations
+
+### Story 7.5: Student Subject Progress and Tips
+
+As a student,
+I want to see per-subject progress details and actionable improvement tips,
+So that I know exactly what to work on and can see that I'm getting better.
+
+**Acceptance Criteria:**
+
+**Given** a student navigates to a subject progress screen
+**When** the screen loads
+**Then** it displays a `GrowthTimeline` (growth-framed variant), strengths highlighted prominently, and focus areas with specific tips
+
+**Given** a student views the Tips tab
+**When** tips are displayed
+**Then** each tip card contains specific, actionable advice linked to recent performance
+**And** tips are sourced from practice recommendations stored with approved grades (read from student progress API)
+
+**Given** a student acts on a tip (e.g., completes a suggested practice)
+**When** their next assessment in that area improves
+**Then** the growth view reflects the improvement with a celebration moment
+**And** the tip is archived as "completed" with the improvement noted
+
+### Story 7.6: Offline Dashboard Caching
+
+As a parent or student,
+I want to view my dashboard even without internet connectivity,
+So that I can check progress anywhere, including areas with poor connectivity.
+
+**Acceptance Criteria:**
+
+**Given** a parent or student has previously loaded their dashboard with connectivity
+**When** they open the app without internet
+**Then** the cached dashboard data is displayed
+**And** a banner shows "Last updated: [timestamp]" to indicate data freshness
+
+**Given** cached data is being displayed offline
+**When** the user navigates between dashboard screens (subject detail, tips)
+**Then** all previously loaded data is available from cache
+**And** actions requiring network (e.g., "Message Teacher") show "Available when connected"
+
+**Given** connectivity is restored
+**When** the app detects the network
+**Then** data is silently refreshed in the background
+**And** the "Last updated" banner disappears or updates to current time
+
+## Epic 8: Contextual Messaging, Notifications & Push Infrastructure
+
+Teachers and parents can exchange messages linked to specific students and assignments. All users receive configurable notifications (instant/daily/weekly digest/off) via push notifications.
+
+### Story 8.1: Teacher-Parent Contextual Messaging
+
+As a teacher or parent,
+I want to exchange messages that are automatically linked to a specific student and optionally an assignment,
+So that conversations have context and don't require re-explaining which child or grade is being discussed.
+
+**Acceptance Criteria:**
+
+**Given** a teacher views a student's grading result or a parent views an assignment detail
+**When** they tap "Message Teacher" or "Message Parent"
+**Then** a new message thread is created (or existing thread resumed) pre-linked to that student
+**And** the thread header shows the student name and, if initiated from an assignment, the assignment context card
+
+**Given** a teacher views the Messages tab
+**When** threads are listed
+**Then** threads are grouped by student with the most recent message preview visible
+**And** unread threads show an unread badge count
+
+**Given** a parent sends a message
+**When** the teacher receives it
+**Then** the message displays with the linked student/assignment context visible
+**And** the teacher can reply without needing to search for which student is being discussed
+
+**Given** no message thread exists between a teacher and a parent for a given student
+**When** either party sends the first message
+**Then** a new thread is automatically created, linked to that student
+**And** the thread appears in both parties' Messages tab immediately
+
+**Given** a user is offline
+**When** they compose and send a message
+**Then** the message is queued locally (via AsyncStorage/SQLite) with "Sending..." status
+**And** auto-sends when connectivity is restored
+
+### Story 8.2: Push Notification Infrastructure
+
+As a user,
+I want to receive push notifications for important events on my phone,
+So that I stay informed without needing to constantly check the app.
+
+**Acceptance Criteria:**
+
+**Given** the mobile app is installed
+**When** the user grants notification permissions
+**Then** the device token is registered with the push notification service (APNs for iOS, FCM for Android)
+**And** the token is associated with the user's account and device
+
+**Given** a notifiable event occurs (new grade approved, new message received, progress update)
+**When** the notification is triggered
+**Then** a push notification is delivered to the user's registered device(s)
+**And** tapping the notification deep-links to the relevant screen (assignment detail, message thread, dashboard)
+
+**Given** a user has multiple devices registered
+**When** a notification fires
+**Then** it is delivered to all registered devices
+**And** reading/acting on one device clears the notification badge on others (via background sync)
+
+### Story 8.3: Notification Cadence Configuration
+
+As a user,
+I want to configure how often I receive notifications (instant, daily digest, weekly digest, or off),
+So that I control my notification experience and avoid being overwhelmed.
+
+**Acceptance Criteria:**
+
+**Given** a user navigates to Settings → Notifications
+**When** they view notification preferences
+**Then** they see options per notification category: Instant, Daily Digest, Weekly Digest, Off
+**And** categories include: New Grades, Messages, Progress Updates, System Announcements
+
+**Given** a parent selects "Daily Digest" for New Grades
+**When** grades are approved during the day
+**Then** individual push notifications are suppressed
+**And** a single digest notification is sent at the configured time (default: 6 PM local) summarizing all new grades
+
+**Given** a parent selects "Weekly Digest" for Progress Updates
+**When** the weekly digest fires
+**Then** it includes a summary of the child's trend changes, new strengths, and focus areas for the week
+
+**Given** a user selects "Off" for a category
+**When** events in that category occur
+**Then** no push notification is sent
+**And** the information is still visible in-app when the user opens it
+
+### Story 8.4: Progress Event Alerts to Parents
+
+As a parent,
+I want to be automatically notified when my child receives a new graded assignment or has a notable progress change,
+So that I stay engaged with my child's learning without depending on the teacher to reach out.
+
+**Acceptance Criteria:**
+
+**Given** a teacher approves a grade for a student
+**When** the approval is persisted
+**Then** the parent receives a notification (per their cadence setting) with: student name, subject, and a brief summary
+**And** tapping the notification opens the assignment detail screen
+
+**Given** the system detects a significant trend change (e.g., consistent improvement or decline over 3+ assignments)
+**When** the trend analysis completes
+**Then** the parent receives a contextual notification: "Ava has been improving steadily in Math — tap to see details"
+**And** the notification uses growth-framed language (never alarming for declines: "Ava may need extra support in Science this week")
+
+**Given** a parent has "Off" notifications for Progress Updates
+**When** a trend change occurs
+**Then** no notification is sent
+**And** the trend change is still reflected on their dashboard on next visit
+
+## Epic 9: Admin Web Portal & School Operations
+
+Admins can manage organizations, users, roles, and safety settings via the web interface. Includes school setup wizard, Google Classroom roster import, and standards profile configuration.
+
+### Story 9.1: Admin Web Portal Shell and Navigation
+
+As an admin,
+I want a web-based admin portal with clear navigation for managing schools and users,
+So that I can perform administrative tasks efficiently from a desktop browser.
+
+**Acceptance Criteria:**
+
+**Given** an admin navigates to the admin web portal URL
+**When** they authenticate (email/password or Google SSO)
+**Then** they land on the admin dashboard with sidebar navigation: Organizations, Users, Roles, Settings, Standards
+**And** the portal uses the same "Clear Path" design system (Tamagui web target) with warm off-white background and sage green primary
+
+**Given** the admin views the dashboard
+**When** the page loads
+**Then** it shows key metrics: total active organizations, total users by role, recent activity summary
+**And** quick action cards for common tasks: "Add Organization," "Invite User," "View Pending Consent"
+
+### Story 9.2: Organization Management
+
+As an admin,
+I want to create and manage organizations (schools/districts) with a setup wizard,
+So that I can onboard new schools efficiently.
+
+**Acceptance Criteria:**
+
+**Given** an admin clicks "Add Organization"
+**When** the setup wizard opens
+**Then** it guides through: org name, type (school/district), address, primary contact → admin user creation → confirmation
+**And** each step validates inputs before allowing progression
+
+**Given** an organization is created
+**When** the admin views the org detail page
+**Then** they see: org profile, member count by role, class count, usage metrics, and status (active/suspended)
+**And** they can edit org details, suspend, or deactivate the organization
+
+**Given** the platform supports multi-organization operation
+**When** an admin views the Organizations list
+**Then** all orgs are listed with search and filter by status, type, and creation date
+**And** data isolation between organizations is enforced (org-scoped queries)
+
+### Story 9.3: User Management (Invite, Activate, Deactivate)
+
+As an admin,
+I want to invite, activate, and deactivate users across organizations,
+So that I can control who has access to the platform.
+
+**Acceptance Criteria:**
+
+**Given** an admin selects an organization
+**When** they click "Invite User"
+**Then** a form appears with: email, role (teacher/parent/student/principal/admin), and optional class assignment
+**And** an invitation email is sent with a sign-up link scoped to that organization
+
+**Given** an admin views the user list
+**When** they filter by status
+**Then** they can see active, pending (invited but not signed up), and deactivated users
+**And** they can activate or deactivate any user with a confirmation dialog
+
+**Given** an admin deactivates a user
+**When** the deactivation is confirmed
+**Then** the user's sessions are invalidated and they cannot sign in
+**And** their data is retained (not deleted) for audit and compliance purposes
+
+### Story 9.4: Role Assignment and Management
+
+As an admin,
+I want to assign and change user roles within an organization,
+So that users have appropriate access levels for their responsibilities.
+
+**Acceptance Criteria:**
+
+**Given** an admin views a user's profile
+**When** they click "Change Role"
+**Then** a role selector appears with available roles: teacher, parent, student, principal, admin
+**And** changing the role updates the user's navigation, permissions, and accessible features immediately
+
+**Given** a role change is made
+**When** the change is persisted
+**Then** an audit record is created with: admin identity, previous role, new role, timestamp, and reason (optional text field)
+
+**Given** an admin attempts to remove the last admin from an organization
+**When** the action is submitted
+**Then** the system blocks the action with: "Cannot remove the last admin — assign another admin first"
+
+### Story 9.5: Safety and Content Controls
+
+As an admin,
+I want to configure AI safety settings and content controls per organization,
+So that AI-generated content meets the school's policies and community standards.
+
+**Acceptance Criteria:**
+
+**Given** an admin navigates to Settings → Safety Controls
+**When** the settings page loads
+**Then** they see configurable options: AI content sensitivity level (standard/strict), allowed subjects for AI planning, feedback language preferences, and content review flags
+
+**Given** an admin sets the sensitivity level to "strict"
+**When** AI generates grading feedback or lesson plans for that organization
+**Then** the AI output is filtered through additional safety checks before being shown to teachers
+**And** flagged content is held for admin review before teacher access
+
+**Given** an admin modifies safety settings
+**When** the change is saved
+**Then** the change takes effect for all new AI operations in that organization
+**And** an audit record captures the setting change with admin identity and timestamp
+
+### Story 9.6: Google Classroom Roster Import
+
+As a teacher or admin,
+I want to import student rosters from Google Classroom,
+So that I don't have to manually re-enter class and student data.
+
+**Acceptance Criteria:**
+
+**Given** a teacher or admin initiates roster import
+**When** they connect their Google account with Classroom permissions
+**Then** a list of their Google Classroom classes is displayed for selection
+
+**Given** the user selects one or more classes to import
+**When** the import is triggered
+**Then** the system creates corresponding classes and enrolls students based on the Google Classroom roster
+**And** a summary shows: classes created, students imported, and any conflicts (e.g., duplicate emails)
+
+**Given** students already exist in the platform
+**When** matching Google Classroom students are imported
+**Then** existing accounts are linked (not duplicated) based on email matching
+**And** the user is informed of the link with an option to review
+
+### Story 9.7: Standards Profile Configuration
+
+As an admin,
+I want to configure grading standards and rubric profiles for my organization,
+So that AI grading aligns with our school's academic standards and curriculum framework.
+
+**Acceptance Criteria:**
+
+**Given** an admin navigates to Standards management
+**When** they view available profiles
+**Then** they see pre-built standards profiles (e.g., Common Core, state-specific standards) and custom profiles
+
+**Given** an admin selects or creates a standards profile
+**When** they configure it
+**Then** they can map subjects to standard sets, define rubric criteria per grade level, and set scoring scales
+**And** the profile is applied to all AI grading operations for that organization
+
+**Given** a standards profile is updated
+**When** teachers use AI grading
+**Then** rubric suggestions align with the configured standards
+**And** the previous profile version is retained for historical grading records
+
+## Epic 10: Principal & Org Analytics Dashboards
+
+Principals and org managers can view cohort-level performance trends by grade/subject, apply segment filters, and monitor engagement/communication health — all privacy-safe.
+
+### Story 10.1: Cohort Performance Trends Dashboard
+
+As a principal,
+I want to see school-wide performance trends by grade and subject on a web dashboard,
+So that I can identify patterns and make evidence-based decisions about staffing, PD, and curriculum.
+
+**Acceptance Criteria:**
+
+**Given** a principal signs into the companion web portal
+**When** the Cohort Dashboard loads
+**Then** it displays aggregate trend charts showing performance by grade level and subject over time
+**And** a teacher activity summary showing grading velocity and feedback quality indicators
+
+**Given** the dashboard displays performance data
+**When** the principal views any chart or metric
+**Then** all data is aggregated — no individual student names, scores, or PII are visible
+**And** minimum cohort size thresholds (e.g., 10+ students) prevent de-identification of small groups
+
+**Given** trend data is available
+**When** charts render
+**Then** they use the same growth-framed language and color system as the mobile app (green for positive trends, amber for focus areas)
+
+### Story 10.2: Segment Filters and Drill-Down
+
+As a principal,
+I want to filter cohort data by grade, subject, teacher, and time period,
+So that I can isolate specific trends and compare across segments.
+
+**Acceptance Criteria:**
+
+**Given** the principal views the cohort dashboard
+**When** they apply filters (grade level, subject, teacher, date range)
+**Then** all charts and metrics update to reflect the filtered data
+**And** active filters are displayed as removable chips above the data area
+
+**Given** a principal drills into a specific grade/subject combination
+**When** the drill-down view loads
+**Then** it shows detailed trend data, distribution charts, and comparison to school-wide averages
+**And** data tables are filterable and sortable
+
+**Given** a principal wants to compare two segments
+**When** they select a comparison mode
+**Then** side-by-side or overlay visualizations show the two segments' trends
+**And** statistical context is provided (e.g., "Grade 4 Math is trending 12% above school average")
+
+### Story 10.3: Engagement and Communication Health Indicators
+
+As a principal,
+I want to see engagement metrics showing teacher-parent communication activity and platform adoption,
+So that I can identify disengaged classrooms and support teachers who need help.
+
+**Acceptance Criteria:**
+
+**Given** the principal views the engagement section
+**When** metrics load
+**Then** they see: parent login frequency, message response rates, grading turnaround time by teacher, and parent dashboard visit frequency
+
+**Given** a teacher has low engagement metrics (e.g., no grades approved in 2+ weeks)
+**When** the engagement dashboard highlights this
+**Then** it appears as an "attention needed" indicator (not punitive) with context
+**And** the principal can see the teacher's class count and student count for context
+
+**Given** overall platform adoption metrics
+**When** the principal reviews them
+**Then** they see: percentage of parents who have signed in, percentage of students active, and invite link conversion rate
+**And** metrics are broken down by grade level
+
+### Story 10.4: PII-Safe Default Analytics Views
+
+As a principal,
+I want all analytics views to be privacy-safe by default,
+So that I can share dashboards in meetings without risk of exposing individual student data.
+
+**Acceptance Criteria:**
+
+**Given** any analytics view is rendered
+**When** the principal views or presents it
+**Then** no individual student names, scores, or identifiable information is displayed
+**And** all data is aggregated to cohort level
+
+**Given** a cohort has fewer students than the minimum threshold (configurable, default 10)
+**When** analytics for that cohort are requested
+**Then** the data is suppressed with a message: "Too few students for anonymous reporting"
+**And** no partial data is shown that could enable identification
+
+**Given** a principal needs individual-level data for a legitimate purpose
+**When** they attempt to access it
+**Then** the system requires explicit acknowledgment of the data access purpose
+**And** the access is logged in the audit trail (Epic 11)
+
+## Epic 11: Compliance, Audit & Data Governance
+
+The platform maintains immutable audit trails for grade changes, role changes, and sensitive access. COPPA/FERPA-aligned access/disclosure controls are operational. Data minimization and RBAC enforcement hardened across all protected capabilities.
+
+### Story 11.1: Audit Infrastructure and Event Capture Service
+
+As a platform operator,
+I want a dedicated audit event capture service with an append-only schema and tamper-evidence,
+So that all auditable actions across the platform are reliably recorded without blocking request flows.
+
+**Acceptance Criteria:**
+
+**Given** the audit_events table was created in Story 4.3
+**When** the audit event capture service is deployed
+**Then** it provides an async event capture API: any service can emit an audit event via SQS message
+**And** the audit worker consumes events and inserts them into the append-only audit_events table
+
+**Given** an audit event is captured
+**When** it is inserted into the database
+**Then** the record includes: event_type, actor_id, actor_role, target_entity, target_id, org_id, timestamp, previous_values (JSONB), new_values (JSONB), and a SHA-256 hash of the record contents for tamper detection
+
+**Given** the audit table is append-only
+**When** any application role attempts UPDATE or DELETE on audit_events
+**Then** the operation is rejected by database permissions
+**And** only INSERT is permitted for the application service role
+
+**Given** an admin queries audit records
+**When** they search by org_id, event_type, actor_id, target_entity, or date range
+**Then** results are returned efficiently via indexed columns
+**And** the query API enforces org-scoped access (admin can only see their org's audit records)
+
+**Given** the audit capture is async (SQS-based)
+**When** the API performs an auditable action (grade change, role change, sensitive access)
+**Then** the audit event is emitted to the SQS queue without blocking the API response
+**And** NFR10 is met: events are recorded within 30 seconds of the triggering action
+
+### Story 11.2: Grade Change Audit Trail
+
+As a compliance officer or admin,
+I want an immutable audit log of all grade changes including original AI suggestion, teacher modifications, and final approved value,
+So that grade integrity can be verified and disputed grades can be investigated.
+
+**Acceptance Criteria:**
+
+**Given** a teacher approves a grade (with or without modifications)
+**When** the approval is persisted
+**Then** an immutable audit record is created containing: teacher identity, timestamp, student identity, assignment identity, original AI-suggested score, any modifications made, final approved score, and feedback text
+
+**Given** a teacher modifies a previously approved grade
+**When** the modification is saved
+**Then** a new audit record is appended (never overwriting the previous record)
+**And** the record includes: reason for change (required text field), previous values, and new values
+
+**Given** an admin queries grade audit logs
+**When** they search by student, teacher, class, or date range
+**Then** the full modification history is returned in chronological order
+**And** each record is tamper-evident (hashed or signed)
+
+### Story 11.3: Role and Permission Change Audit Trail
+
+As an admin,
+I want an immutable audit log of all role assignments, changes, and permission modifications,
+So that access changes can be reviewed for compliance and security investigations.
+
+**Acceptance Criteria:**
+
+**Given** an admin changes a user's role
+**When** the change is persisted
+**Then** an audit record is created with: acting admin identity, target user identity, previous role, new role, timestamp, and optional reason
+
+**Given** an admin activates or deactivates a user
+**When** the action is persisted
+**Then** an audit record captures: action type, acting admin, target user, timestamp, and reason
+
+**Given** audit records are queried
+**When** results are returned
+**Then** records are immutable and ordered chronologically
+**And** the query supports filtering by actor, target user, action type, and date range
+
+### Story 11.4: Sensitive Data Access Audit Trail
+
+As a compliance officer,
+I want all access to sensitive data (individual student records, PII) to be logged,
+So that unauthorized or unusual access patterns can be detected and investigated.
+
+**Acceptance Criteria:**
+
+**Given** a principal or admin accesses individual-level student data (beyond aggregate analytics)
+**When** the data is retrieved
+**Then** an audit record is created with: accessor identity, data accessed (student ID, data type), timestamp, and stated purpose
+
+**Given** an unusual access pattern is detected (e.g., bulk student record access, access outside normal hours)
+**When** the pattern exceeds configured thresholds
+**Then** an alert is generated for the compliance admin
+**And** the access is not blocked but flagged for review
+
+**Given** audit records for sensitive access
+**When** they are queried
+**Then** they are retained for the configured compliance period (minimum 3 years)
+**And** records cannot be deleted or modified by any user role
+
+### Story 11.5: COPPA/FERPA-Aligned Access and Disclosure Controls
+
+As a platform operator,
+I want access controls that enforce COPPA and FERPA requirements,
+So that student data is only accessible to authorized parties and disclosures are controlled.
+
+**Acceptance Criteria:**
+
+**Given** the RBAC system is configured
+**When** any user requests data about a student
+**Then** access is evaluated against: the user's role, their organizational membership, their relationship to the student (teacher of record, linked parent), and the data classification
+
+**Given** a user without a direct relationship to a student
+**When** they attempt to access that student's data
+**Then** the request is denied with a generic "Access denied" message (not revealing whether the student exists)
+**And** the denied access attempt is logged
+
+**Given** disclosure controls are configured per organization
+**When** an admin reviews disclosure settings
+**Then** they can configure: which data fields are visible to each role, whether aggregated data can be exported, and consent requirements for data sharing
+
+### Story 11.6: Data Minimization and RBAC Enforcement
+
+As a platform operator,
+I want data minimization principles enforced across all features,
+So that each role only accesses the minimum data necessary for their function.
+
+**Acceptance Criteria:**
+
+**Given** the RBAC system is enforced across all API endpoints
+**When** a request is made to any protected capability
+**Then** the response is filtered to include only the fields authorized for the requester's role
+**And** API responses never include fields the role is not entitled to see (not even as null/hidden — absent from payload)
+
+**Given** a teacher queries student data
+**When** the response is constructed
+**Then** it includes only students in the teacher's assigned classes within their organization
+**And** excludes students from other classes, other teachers, or other organizations
+
+**Given** data retention policies are configured
+**When** data exceeds the retention period
+**Then** personally identifiable data is anonymized or purged per the configured schedule
+**And** aggregate/statistical data derived from the original records is retained for analytics
+
+**Given** the RBAC enforcement is operational
+**When** a penetration test or security review is conducted
+**Then** no endpoint returns data outside the requester's authorized scope
+**And** cross-tenant data access (org A accessing org B's data) is impossible

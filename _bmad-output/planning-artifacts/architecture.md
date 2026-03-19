@@ -20,13 +20,14 @@ inputDocuments:
 ## Stack Decisions
 
 - Backend: FastAPI (Python 3.12+)
-- Database: PostgreSQL 16.x (AWS RDS)
-- Connection pooling: RDS Proxy
+- Database: PostgreSQL 16.x (Docker locally; AWS RDS for future cloud)
+- Connection pooling: RDS Proxy (cloud); direct connection (local)
 - Migrations: Alembic (SQLAlchemy)
 - Mobile UI: React Native (Expo) with Tamagui design system
 - Companion Web: React SPA (Vite + Tamagui) — static deploy on S3 + CloudFront, no SSR
-- Cloud: AWS (ECS Fargate, RDS, S3, SQS, CloudFront, Secrets Manager, ECR, Route 53, ACM)
-- CI/CD: GitHub Actions
+- Local deployment: Docker Compose (PostgreSQL, MinIO, API, Worker)
+- Cloud (future): AWS (ECS Fargate, RDS, S3, SQS, CloudFront, Secrets Manager, ECR, Route 53, ACM)
+- CI/CD: GitHub Actions (cloud); local Docker Compose for MVP
 - Mobile builds: Expo EAS Build (TestFlight + Play Store internal testing)
 - Push notifications: FCM (Android) + APNs (iOS) via backend dispatch service
 - AI grading: Multimodal vision models (Claude / GPT-4 Vision) — no OCR pipeline
@@ -141,6 +142,29 @@ inputDocuments:
 | CI/CD | GitHub Actions, GitHub-hosted runners | Same | Same + manual deploy gate |
 | Secrets | Secrets Manager | Secrets Manager | Secrets Manager |
 | Observability | CloudWatch basic | CloudWatch + alarms | CloudWatch + alarms + dashboards |
+
+## Local Development & Demo Deployment (MVP)
+
+The MVP runs entirely locally via Docker Compose. All service interfaces use provider-agnostic abstractions so the same application code runs against local services and future cloud services with only configuration changes.
+
+| AWS Service (Future) | Local Replacement | Interface |
+|---|---|---|
+| RDS PostgreSQL | PostgreSQL 16.x in Docker | SQLAlchemy/Alembic (unchanged) |
+| S3 (file storage) | MinIO (S3-compatible) | boto3 S3 client (same SDK) |
+| SQS (queues) | FastAPI BackgroundTasks | Queue interface abstraction |
+| ECS Fargate | Docker Compose | Dockerfile (same images) |
+| SES (email) | Console logging / Mailhog | Email service interface |
+| CloudFront | Not needed locally | — |
+| Secrets Manager | `.env` file + docker-compose env | Config module reads from env |
+| ECR | Local Docker images | — |
+
+**docker-compose.yml services:**
+- `postgres`: PostgreSQL 16.x with persistent volume
+- `minio`: MinIO with pre-created bucket for assignment images
+- `api`: FastAPI application (hot-reload via volume mount)
+- `worker`: FastAPI worker service (same image, different entrypoint)
+
+**Cloud migration path:** When AWS credentials are available, swap environment config to point at RDS, S3, SQS. The application code, Dockerfiles, and Alembic migrations are identical.
 
 **Day-zero operational prerequisites:**
 - Apple Developer Program enrollment ($99/yr) — requires DUNS number, review time
@@ -741,22 +765,12 @@ ilm/
 │   ├── tsconfig/
 │   └── testing/
 ├── infra/
-│   ├── terraform/
-│   │   ├── envs/
-│   │   │   ├── dev/
-│   │   │   ├── staging/
-│   │   │   └── prod/
-│   │   └── modules/
-│   │       ├── ecs/
-│   │       ├── rds/
-│   │       ├── s3/
-│   │       ├── sqs/
-│   │       ├── cloudfront/
-│   │       ├── ecr/
-│   │       └── secrets/
 │   ├── docker/
 │   │   ├── api.Dockerfile
-│   │   └── worker.Dockerfile
+│   │   ├── worker.Dockerfile
+│   │   └── docker-compose.yml
+│   ├── terraform/          # Deferred — future cloud deployment
+│   │   └── README.md       # "Terraform modules for AWS deployment (post-MVP)"
 │   └── scripts/
 ├── docs/
 │   ├── architecture/
