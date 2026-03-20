@@ -12,6 +12,17 @@ class Settings:
     google_oauth_client_id: str
     google_oidc_jwks_url: str
     google_oidc_algorithm: str
+    # Database
+    database_url: str
+    # S3 / MinIO
+    s3_endpoint_url: str
+    s3_access_key: str
+    s3_secret_key: str
+    s3_bucket: str
+    # Provider selections
+    email_provider: str
+    job_provider: str
+    notification_provider: str
 
 
 def _load_settings() -> Settings:
@@ -35,6 +46,14 @@ def _load_settings() -> Settings:
             "https://www.googleapis.com/oauth2/v3/certs",
         ),
         google_oidc_algorithm=os.getenv("GOOGLE_OIDC_ALGORITHM", "RS256"),
+        database_url=os.getenv("DATABASE_URL", "postgresql+asyncpg://ilm:ilm@localhost:5432/ilm"),
+        s3_endpoint_url=os.getenv("S3_ENDPOINT_URL", ""),
+        s3_access_key=os.getenv("S3_ACCESS_KEY", "minioadmin"),
+        s3_secret_key=os.getenv("S3_SECRET_KEY", "minioadmin"),
+        s3_bucket=os.getenv("S3_BUCKET", "ilm-assignments"),
+        email_provider=os.getenv("EMAIL_PROVIDER", "console"),
+        job_provider=os.getenv("JOB_PROVIDER", "background_tasks"),
+        notification_provider=os.getenv("NOTIFICATION_PROVIDER", "console"),
     )
 
 

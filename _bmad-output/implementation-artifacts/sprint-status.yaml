@@ -87,8 +87,8 @@ development_status:
   # ============================================================
   epic-4: in-progress
   4-1-initialize-turborepo-monorepo-and-project-scaffold: done
-  4-2-local-infrastructure-with-docker-compose: backlog
-  4-3-database-schema-initialization-and-migrations: backlog
+  4-2-local-infrastructure-with-docker-compose: done
+  4-3-database-schema-initialization-and-migrations: ready-for-dev
   4-4-mobile-app-shell-with-role-scoped-navigation: backlog
   4-5-email-password-sign-in-on-mobile: backlog
   4-6-google-sign-in-on-mobile: backlog
