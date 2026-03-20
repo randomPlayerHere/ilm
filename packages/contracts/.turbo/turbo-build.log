@@ -1,0 +1,4 @@
+
+> @ilm/contracts@0.1.0 build /home/kuper/ss/teacherOs/ilm/packages/contracts
+> tsc --noEmit
+

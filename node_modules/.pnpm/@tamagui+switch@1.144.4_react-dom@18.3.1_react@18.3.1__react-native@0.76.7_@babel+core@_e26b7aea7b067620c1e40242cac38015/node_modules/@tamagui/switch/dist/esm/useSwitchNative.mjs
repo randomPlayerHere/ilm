@@ -1,0 +1,5 @@
+function useSwitchNative(_props) {
+  return null;
+}
+export { useSwitchNative };
+//# sourceMappingURL=useSwitchNative.mjs.map

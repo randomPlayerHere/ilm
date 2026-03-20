@@ -1,0 +1,28 @@
+import { createContext, useContext } from "react";
+import { jsx } from "react/jsx-runtime";
+const GestureSheetContext = createContext(null);
+function useGestureSheetContext() {
+  return useContext(GestureSheetContext);
+}
+function GestureSheetProvider({
+  children,
+  isDragging,
+  blockPan,
+  setBlockPan,
+  panGesture,
+  panGestureRef
+}) {
+  const value = {
+    panGesture,
+    panGestureRef,
+    isDragging,
+    blockPan,
+    setBlockPan
+  };
+  return /* @__PURE__ */jsx(GestureSheetContext.Provider, {
+    value,
+    children
+  });
+}
+export { GestureSheetProvider, useGestureSheetContext };
+//# sourceMappingURL=GestureSheetContext.mjs.map

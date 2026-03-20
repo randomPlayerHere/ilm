@@ -1,0 +1,14 @@
+node_modules
+.git
+.agents
+_bmad
+_bmad-output
+docs
+tests
+apps/admin-web
+apps/mobile
+packages
+*.md
+pnpm-lock.yaml
+pnpm-workspace.yaml
+turbo.json

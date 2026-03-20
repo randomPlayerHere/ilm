@@ -89,7 +89,7 @@ development_status:
   4-1-initialize-turborepo-monorepo-and-project-scaffold: done
   4-2-local-infrastructure-with-docker-compose: done
   4-3-database-schema-initialization-and-migrations: done
-  4-4-mobile-app-shell-with-role-scoped-navigation: backlog
+  4-4-mobile-app-shell-with-role-scoped-navigation: done
   4-5-email-password-sign-in-on-mobile: backlog
   4-6-google-sign-in-on-mobile: backlog
   4-7-teacher-class-setup-and-student-management: backlog

@@ -1,0 +1,4 @@
+
+> @ilm/admin-web@0.1.0 typecheck /home/kuper/ss/teacherOs/ilm/apps/admin-web
+> tsc --noEmit
+

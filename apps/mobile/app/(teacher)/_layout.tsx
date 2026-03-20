@@ -1,25 +1,64 @@
+import { View } from "react-native";
 import { Tabs } from "expo-router";
-import { colors, layout } from "@ilm/design-tokens";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Haptics from "expo-haptics";
+import { colors, layout, shadows, fonts, fontWeights } from "@ilm/design-tokens";
+import { getTabBarIcon } from "../../src/navigation/tab-icons";
+import { CameraFab } from "../../src/components/CameraFab";
+import { useReducedMotionContext } from "../../src/contexts/ReducedMotionContext";
 
-/**
- * Teacher tab layout — 5 tabs + camera FAB (FAB added in Story 4.4).
- * Tab bar: 56px height + safe area, primary active icon, text-secondary inactive, caption labels.
- */
 export default function TeacherLayout() {
+  const insets = useSafeAreaInsets();
+  const reducedMotion = useReducedMotionContext();
+
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textSecondary,
-        tabBarStyle: { height: layout.tabBarHeight },
-        headerShown: false,
-      }}
-    >
-      <Tabs.Screen name="index" options={{ title: "Home" }} />
-      <Tabs.Screen name="grade" options={{ title: "Grade" }} />
-      <Tabs.Screen name="plan" options={{ title: "Plan" }} />
-      <Tabs.Screen name="messages" options={{ title: "Messages" }} />
-      <Tabs.Screen name="settings" options={{ title: "More" }} />
-    </Tabs>
+    <View style={{ flex: 1 }}>
+      <Tabs
+        screenOptions={{
+          animation: reducedMotion ? "none" : "fade",
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.textSecondary,
+          tabBarStyle: {
+            height: layout.tabBarHeight + insets.bottom,
+            paddingBottom: insets.bottom,
+            backgroundColor: colors.surface,
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+            ...shadows.md,
+          },
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontFamily: fonts.body,
+            fontWeight: fontWeights.medium,
+          },
+          headerShown: false,
+        }}
+        screenListeners={{
+          tabPress: () => Haptics.selectionAsync(),
+        }}
+      >
+        <Tabs.Screen
+          name="index"
+          options={{ title: "Home", tabBarAccessibilityLabel: "Home tab", tabBarIcon: getTabBarIcon("teacher", "index") }}
+        />
+        <Tabs.Screen
+          name="grade"
+          options={{ title: "Grade", tabBarAccessibilityLabel: "Grade tab", tabBarIcon: getTabBarIcon("teacher", "grade") }}
+        />
+        <Tabs.Screen
+          name="plan"
+          options={{ title: "Plan", tabBarAccessibilityLabel: "Plan tab", tabBarIcon: getTabBarIcon("teacher", "plan") }}
+        />
+        <Tabs.Screen
+          name="messages"
+          options={{ title: "Messages", tabBarAccessibilityLabel: "Messages tab", tabBarIcon: getTabBarIcon("teacher", "messages") }}
+        />
+        <Tabs.Screen
+          name="settings"
+          options={{ title: "More", tabBarAccessibilityLabel: "More tab", tabBarIcon: getTabBarIcon("teacher", "settings") }}
+        />
+      </Tabs>
+      <CameraFab bottomOffset={layout.tabBarHeight + insets.bottom + 24} />
+    </View>
   );
 }

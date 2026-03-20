@@ -1,0 +1,48 @@
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+    for (var name in all) __defProp(target, name, {
+      get: all[name],
+      enumerable: !0
+    });
+  },
+  __copyProps = (to, from, except, desc) => {
+    if (from && typeof from == "object" || typeof from == "function") for (let key of __getOwnPropNames(from)) !__hasOwnProp.call(to, key) && key !== except && __defProp(to, key, {
+      get: () => from[key],
+      enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
+    });
+    return to;
+  };
+var __toCommonJS = mod => __copyProps(__defProp({}, "__esModule", {
+  value: !0
+}), mod);
+var useRenderElement_exports = {};
+__export(useRenderElement_exports, {
+  evaluateRenderProp: () => evaluateRenderProp
+});
+module.exports = __toCommonJS(useRenderElement_exports);
+var import_react = require("react"),
+  import_compose_refs = require("@tamagui/compose-refs"),
+  import_mergeSlotStyleProps = require("./mergeSlotStyleProps.cjs");
+function evaluateRenderProp(render, props, state, defaultElement) {
+  if (!render) return defaultElement;
+  const defaultChildren = defaultElement.props.children;
+  if (typeof render == "string") return (0, import_react.createElement)(render, props, defaultChildren);
+  if (typeof render == "function") return render(props, state);
+  if ((0, import_react.isValidElement)(render)) {
+    const renderProps = render.props,
+      renderRef = renderProps?.ref;
+    if (!renderProps || Object.keys(renderProps).length === 0) return renderRef ? (0, import_react.cloneElement)(render, {
+      ...props,
+      ref: (0, import_compose_refs.composeRefs)(props.ref, renderRef)
+    }, defaultChildren) : (0, import_react.cloneElement)(render, props, defaultChildren);
+    const merged = (0, import_mergeSlotStyleProps.mergeSlotStyleProps)({
+        ...props
+      }, renderProps),
+      children = renderProps.children ?? defaultChildren;
+    return (0, import_react.cloneElement)(render, merged, children);
+  }
+  return defaultElement;
+}

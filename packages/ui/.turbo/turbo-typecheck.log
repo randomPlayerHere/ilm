@@ -1,0 +1,4 @@
+
+> @ilm/ui@0.1.0 typecheck /home/kuper/ss/teacherOs/ilm/packages/ui
+> tsc --noEmit
+

@@ -1,0 +1,40 @@
+"use strict";
+
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+    for (var name in all) __defProp(target, name, {
+      get: all[name],
+      enumerable: !0
+    });
+  },
+  __copyProps = (to, from, except, desc) => {
+    if (from && typeof from == "object" || typeof from == "function") for (let key of __getOwnPropNames(from)) !__hasOwnProp.call(to, key) && key !== except && __defProp(to, key, {
+      get: () => from[key],
+      enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
+    });
+    return to;
+  },
+  __reExport = (target, mod, secondTarget) => (__copyProps(target, mod, "default"), secondTarget && __copyProps(secondTarget, mod, "default"));
+var __toCommonJS = mod => __copyProps(__defProp({}, "__esModule", {
+  value: !0
+}), mod);
+var v5_themes_subtle_exports = {};
+__export(v5_themes_subtle_exports, {
+  themes: () => themes
+});
+module.exports = __toCommonJS(v5_themes_subtle_exports);
+__reExport(v5_themes_subtle_exports, require("./v5-themes.native.js"), module.exports);
+var import_subtleChildrenThemes = require("./subtleChildrenThemes.native.js"),
+  import_v5_themes = require("./v5-themes.native.js"),
+  themes = (0, import_v5_themes.createV5Theme)({
+    childrenThemes: import_subtleChildrenThemes.subtleChildrenThemes
+  });
+themes.dark.background0075;
+themes.dark_yellow.background0075;
+themes.dark.background;
+themes.dark.accent1;
+themes.dark.nonValid;
+//# sourceMappingURL=v5-themes-subtle.native.js.map

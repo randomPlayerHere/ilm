@@ -1,0 +1,25 @@
+import { View } from "react-native-web";
+import { getGestureHandlerState, isGestureHandlerEnabled } from "./gestureState.mjs";
+import { jsx } from "react/jsx-runtime";
+function GestureDetectorWrapper({
+  gesture,
+  children,
+  style
+}) {
+  const {
+    GestureDetector
+  } = getGestureHandlerState();
+  return isGestureHandlerEnabled() && GestureDetector && gesture ? /* @__PURE__ */jsx(GestureDetector, {
+    gesture,
+    children: /* @__PURE__ */jsx(View, {
+      style,
+      collapsable: !1,
+      children
+    })
+  }) : /* @__PURE__ */jsx(View, {
+    style,
+    children
+  });
+}
+export { GestureDetectorWrapper };
+//# sourceMappingURL=GestureDetectorWrapper.mjs.map

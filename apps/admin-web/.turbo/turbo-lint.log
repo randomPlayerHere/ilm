@@ -1,0 +1,5 @@
+
+> @ilm/admin-web@0.1.0 lint /home/kuper/ss/teacherOs/ilm/apps/admin-web
+> node -e "const p=require('./package.json'); if(!p.name.startsWith('@ilm/')) process.exit(1); console.log('admin-web baseline lint check passed')"
+
+admin-web baseline lint check passed

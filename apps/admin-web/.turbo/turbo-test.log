@@ -1,0 +1,5 @@
+
+> @ilm/admin-web@0.1.0 test /home/kuper/ss/teacherOs/ilm/apps/admin-web
+> node -e "const fs=require('fs'); if(!fs.existsSync('package.json')) process.exit(1); console.log('admin-web baseline test check passed')"
+
+admin-web baseline test check passed

@@ -1,9 +1,21 @@
-import { View, Text } from "react-native";
+import { YStack, Text } from "tamagui";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { SkeletonLoader } from "@ilm/ui";
+import { colors } from "@ilm/design-tokens";
+import { useReducedMotionContext } from "../../src/contexts/ReducedMotionContext";
 
 export default function ParentSettings() {
+  const reducedMotion = useReducedMotionContext();
+  const skeletonAnimation = reducedMotion ? null : undefined;
+
   return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text>Settings</Text>
-    </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
+      <YStack flex={1} padding="$lg" gap="$lg" backgroundColor="$background">
+        <Text fontSize="$2xl" fontWeight="700" color="$textPrimary">Settings</Text>
+        <SkeletonLoader variant="card" animation={skeletonAnimation} />
+        <SkeletonLoader variant="card" animation={skeletonAnimation} />
+        <SkeletonLoader variant="line" animation={skeletonAnimation} />
+      </YStack>
+    </SafeAreaView>
   );
 }

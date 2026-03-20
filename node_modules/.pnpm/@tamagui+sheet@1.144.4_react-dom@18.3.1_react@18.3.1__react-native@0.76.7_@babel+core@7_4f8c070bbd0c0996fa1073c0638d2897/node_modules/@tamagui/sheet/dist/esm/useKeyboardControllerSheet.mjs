@@ -1,0 +1,15 @@
+import { useRef } from "react";
+const noop = () => {};
+function useKeyboardControllerSheet(_options) {
+  const pauseKeyboardHandler = useRef(!1);
+  return {
+    keyboardControllerEnabled: !1,
+    keyboardHeight: 0,
+    isKeyboardVisible: !1,
+    dismissKeyboard: noop,
+    pauseKeyboardHandler,
+    flushPendingHide: noop
+  };
+}
+export { useKeyboardControllerSheet };
+//# sourceMappingURL=useKeyboardControllerSheet.mjs.map

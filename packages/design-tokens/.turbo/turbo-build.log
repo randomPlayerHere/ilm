@@ -1,0 +1,4 @@
+
+> @ilm/design-tokens@0.1.0 build /home/kuper/ss/teacherOs/ilm/packages/design-tokens
+> tsc --noEmit
+
