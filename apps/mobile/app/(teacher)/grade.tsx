@@ -10,8 +10,8 @@ export default function TeacherGrade() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
-      <YStack flex={1} padding="$lg" gap="$lg" backgroundColor="$background">
-        <Text fontSize="$2xl" fontWeight="700" color="$textPrimary">Grade</Text>
+      <YStack flex={1} padding="$lg" gap="$lg" backgroundColor={colors.background}>
+        <Text fontSize={32} fontWeight="700" color="$textPrimary">Grade</Text>
         <SkeletonLoader variant="card" animation={skeletonAnimation} />
         <SkeletonLoader variant="card" animation={skeletonAnimation} />
         <SkeletonLoader variant="line" animation={skeletonAnimation} />

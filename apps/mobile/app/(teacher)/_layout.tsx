@@ -12,7 +12,7 @@ export default function TeacherLayout() {
   const reducedMotion = useReducedMotionContext();
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Tabs
         screenOptions={{
           animation: reducedMotion ? "none" : "fade",

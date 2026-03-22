@@ -28,7 +28,17 @@
       "output": "static",
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-router", "expo-font"],
-    "scheme": "teacheros"
+    "plugins": [
+      "expo-dev-client",
+      "expo-router",
+      "expo-font",
+      "expo-secure-store",
+      "@react-native-google-signin/google-signin"
+    ],
+    "scheme": "teacheros",
+    "extra": {
+      "apiBaseUrl": "http://10.0.2.2:8000",
+      "googleWebClientId": "596169360316-octgu7hunj5lptdhgjncioapmnf0o8gd.apps.googleusercontent.com"
+    }
   }
 }

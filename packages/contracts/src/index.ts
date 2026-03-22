@@ -19,5 +19,5 @@ export interface ApiError {
   };
 }
 
-/** User roles */
-export type UserRole = "admin" | "principal" | "teacher" | "parent" | "student";
+/** Auth contracts */
+export type { UserRole, LoginRequest, LoginResponse, GoogleLoginRequest } from "./auth";

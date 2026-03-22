@@ -1,0 +1,56 @@
+# ───── Dependencies ─────
+node_modules/
+.pnpm-store/
+
+# ───── Build outputs ─────
+dist/
+build/
+out/
+.next/
+.turbo/
+
+# ───── Environment ─────
+.env
+.env.local
+.env.*.local
+
+# ───── Python ─────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+*.egg-info/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# ───── Android ─────
+apps/mobile/android/
+apps/mobile/.expo/
+apps/mobile/ios/
+
+# ───── Expo ─────
+*.jsbundle
+expo-env.d.ts
+
+# ───── macOS ─────
+.DS_Store
+*.pem
+
+# ───── Editor ─────
+.idea/
+*.iml
+*.swp
+*.swo
+.vscode/settings.json
+
+# ───── Logs ─────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ───── Misc ─────
+*.hprof
+.gradle/

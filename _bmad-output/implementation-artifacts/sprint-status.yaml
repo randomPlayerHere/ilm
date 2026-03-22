@@ -90,10 +90,10 @@ development_status:
   4-2-local-infrastructure-with-docker-compose: done
   4-3-database-schema-initialization-and-migrations: done
   4-4-mobile-app-shell-with-role-scoped-navigation: done
-  4-5-email-password-sign-in-on-mobile: backlog
-  4-6-google-sign-in-on-mobile: backlog
-  4-7-teacher-class-setup-and-student-management: backlog
-  4-8-invite-links-join-codes-and-parent-student-linking: backlog
+  4-5-email-password-sign-in-on-mobile: done
+  4-6-google-sign-in-on-mobile: done
+  4-7-teacher-class-setup-and-student-management: ready-for-dev
+  4-8-invite-links-join-codes-and-parent-student-linking: ready-for-dev
   4-9-guided-onboarding-wizards-per-role: backlog
   4-10-coppa-consent-confirmation-gate: backlog
   epic-4-retrospective: optional
