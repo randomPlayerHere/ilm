@@ -21,3 +21,15 @@ export interface ApiError {
 
 /** Auth contracts */
 export type { UserRole, LoginRequest, LoginResponse, GoogleLoginRequest } from "./auth";
+
+/** Onboarding contracts */
+export type {
+  ClassCreateRequest,
+  ClassResponse,
+  ClassListResponse,
+  StudentCreateRequest,
+  StudentResponse,
+  RosterResponse,
+  CsvImportRowResult,
+  CsvImportResponse,
+} from "./onboarding";

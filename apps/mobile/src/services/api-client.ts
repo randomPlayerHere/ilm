@@ -5,7 +5,7 @@ import { Platform } from "react-native";
 const DEV_FALLBACK =
   Platform.OS === "android" ? "http://10.0.2.2:8000" : "http://localhost:8000";
 
-const API_BASE_URL: string =
+export const API_BASE_URL: string =
   Constants.expoConfig?.extra?.apiBaseUrl ?? DEV_FALLBACK;
 
 export class NetworkError extends Error {
