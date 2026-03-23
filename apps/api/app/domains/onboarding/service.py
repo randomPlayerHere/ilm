@@ -4,7 +4,7 @@ import csv
 import io
 from datetime import UTC, datetime
 
-from app.domains.onboarding.models import ClassRecord, GuardianStudentLinkRecord, InviteLinkRecord, StudentRecord
+from app.domains.onboarding.models import ClassRecord, StudentRecord
 from app.domains.onboarding.repository import OnboardingRepository
 from app.domains.onboarding.schemas import (
     ClassResponse,
@@ -14,6 +14,7 @@ from app.domains.onboarding.schemas import (
     InviteLinkResolveResponse,
     InviteLinkResponse,
     JoinCodeResponse,
+    LinkedChildResponse,
     RosterResponse,
     StudentResponse,
 )
@@ -84,7 +85,9 @@ class OnboardingService:
             created_at=student.created_at,
         )
 
-    def _get_owned_class(self, class_id: str, actor_user_id: str, actor_org_id: str) -> ClassRecord:
+    def _get_owned_class(
+        self, class_id: str, actor_user_id: str, actor_org_id: str
+    ) -> ClassRecord:
         cls = self._repo.get_class(class_id)
         if cls is None:
             raise ClassNotFoundError(f"Class '{class_id}' not found.")
@@ -92,7 +95,9 @@ class OnboardingService:
             raise ClassAccessError("You do not have permission to manage this class.")
         return cls
 
-    def create_class(self, actor_user_id: str, actor_org_id: str, name: str, subject: str) -> ClassResponse:
+    def create_class(
+        self, actor_user_id: str, actor_org_id: str, name: str, subject: str
+    ) -> ClassResponse:
         cls = self._repo.create_class(
             org_id=actor_org_id,
             teacher_user_id=actor_user_id,
@@ -101,14 +106,18 @@ class OnboardingService:
         )
         return self._class_to_response(cls)
 
-    def list_classes(self, actor_user_id: str, actor_org_id: str) -> list[ClassResponse]:
+    def list_classes(
+        self, actor_user_id: str, actor_org_id: str
+    ) -> list[ClassResponse]:
         classes = self._repo.list_classes_for_teacher(
             teacher_user_id=actor_user_id,
             org_id=actor_org_id,
         )
         return [self._class_to_response(cls) for cls in classes]
 
-    def get_roster(self, actor_user_id: str, actor_org_id: str, class_id: str) -> RosterResponse:
+    def get_roster(
+        self, actor_user_id: str, actor_org_id: str, class_id: str
+    ) -> RosterResponse:
         self._get_owned_class(class_id, actor_user_id, actor_org_id)
         enrollments = self._repo.list_enrollments_for_class(class_id)
         students = []
@@ -149,7 +158,9 @@ class OnboardingService:
     ) -> None:
         self._get_owned_class(class_id, actor_user_id, actor_org_id)
         if not self._repo.is_enrolled(class_id, student_id):
-            raise StudentNotEnrolledError(f"Student '{student_id}' is not enrolled in class '{class_id}'.")
+            raise StudentNotEnrolledError(
+                f"Student '{student_id}' is not enrolled in class '{class_id}'."
+            )
         self._repo.unenroll_student(class_id, student_id)
 
     def import_students_csv(
@@ -222,7 +233,14 @@ class OnboardingService:
 
             if error:
                 failed += 1
-                results.append(CsvImportRowResult(row=row_num, success=False, student_name=raw_name or None, error=error))
+                results.append(
+                    CsvImportRowResult(
+                        row=row_num,
+                        success=False,
+                        student_name=raw_name or None,
+                        error=error,
+                    )
+                )
                 continue
 
             student = self._repo.get_or_create_student(
@@ -237,7 +255,11 @@ class OnboardingService:
                 enrolled_by=actor_user_id,
             )
             successful += 1
-            results.append(CsvImportRowResult(row=row_num, success=True, student_name=raw_name, error=None))
+            results.append(
+                CsvImportRowResult(
+                    row=row_num, success=True, student_name=raw_name, error=None
+                )
+            )
 
         return CsvImportResponse(
             total_rows=len(rows),
@@ -253,9 +275,11 @@ class OnboardingService:
         class_id: str,
         student_id: str,
     ) -> InviteLinkResponse:
-        cls = self._get_owned_class(class_id, actor_user_id, actor_org_id)
+        self._get_owned_class(class_id, actor_user_id, actor_org_id)
         if not self._repo.is_enrolled(class_id, student_id):
-            raise StudentNotEnrolledError(f"Student '{student_id}' is not enrolled in class '{class_id}'.")
+            raise StudentNotEnrolledError(
+                f"Student '{student_id}' is not enrolled in class '{class_id}'."
+            )
         # Idempotent: return existing active invite if one exists
         existing = self._repo.get_active_invite_link_for_student(class_id, student_id)
         if existing is not None:
@@ -321,7 +345,9 @@ class OnboardingService:
         if invite is None:
             raise InviteLinkInvalidError("Invite link not found or invalid.")
         if invite.org_id != parent_org_id:
-            raise InviteLinkInvalidError("Invite link is not valid for this organization.")
+            raise InviteLinkInvalidError(
+                "Invite link is not valid for this organization."
+            )
         now = datetime.now(UTC).isoformat()
         if invite.used_at is not None or invite.expires_at < now:
             raise InviteLinkInvalidError("Invite link is no longer valid.")
@@ -338,6 +364,38 @@ class OnboardingService:
             student_id=guardian_link.student_id,
             student_name=student.name if student else "",
         )
+
+    def get_linked_children(
+        self,
+        parent_user_id: str,
+        org_id: str,
+    ) -> list[LinkedChildResponse]:
+        # get_guardian_links_for_parent returns ALL links for this parent (no org filter in repo)
+        all_links = self._repo.get_guardian_links_for_parent(parent_user_id)
+        # Must filter by org_id here — repo method does not do it
+        links = [lnk for lnk in all_links if lnk.org_id == org_id]
+
+        result = []
+        for link in links:
+            student = self._repo.get_student(link.student_id)
+            if not student:
+                continue
+            # Find class via student's enrollment(s)
+            enrollments = self._repo.get_enrollments_for_student(link.student_id)
+            class_record = None
+            if enrollments:
+                class_record = self._repo.get_class(enrollments[0].class_id)
+            result.append(
+                LinkedChildResponse(
+                    link_id=link.link_id,
+                    student_id=link.student_id,
+                    student_name=student.name,
+                    class_name=class_record.name if class_record else None,
+                    subject=class_record.subject if class_record else None,
+                    consent_status=student.consent_status,
+                )
+            )
+        return result
 
     def join_by_code(
         self,

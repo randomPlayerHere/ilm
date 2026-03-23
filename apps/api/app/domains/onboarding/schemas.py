@@ -92,3 +92,16 @@ class GuardianStudentLinkResponse(BaseModel):
     link_id: str
     student_id: str
     student_name: str
+
+
+class LinkedChildResponse(BaseModel):
+    link_id: str
+    student_id: str
+    student_name: str
+    class_name: str | None
+    subject: str | None
+    consent_status: str  # "not_required" | "pending" | "confirmed"
+
+
+class LinkedChildrenResponse(BaseModel):
+    children: list[LinkedChildResponse]

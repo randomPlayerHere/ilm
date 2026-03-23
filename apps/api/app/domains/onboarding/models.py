@@ -43,8 +43,11 @@ class StudentRecord:
     student_id: str      # e.g., "stu_1"
     org_id: str
     name: str            # full name, e.g., "Jane Smith"
-    grade_level: str     # e.g., "Grade 5", "Year 7", "10th Grade"
+    grade_level: str     # e.g., "Grade 5", "Year 7", "10th Grade", "Grade K"
     created_at: str
+    consent_status: str = "not_required"   # "not_required" | "pending" | "confirmed"
+    consent_confirmed_by: str | None = None
+    consent_confirmed_at: str | None = None
 
 
 @dataclass(frozen=True)

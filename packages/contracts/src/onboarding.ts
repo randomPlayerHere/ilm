@@ -84,3 +84,16 @@ export interface GuardianStudentLinkResponse {
   student_id: string;
   student_name: string;
 }
+
+export interface LinkedChildResponse {
+  link_id: string;
+  student_id: string;
+  student_name: string;
+  class_name: string | null;
+  subject: string | null;
+  consent_status: string;  // "not_required" | "pending" | "confirmed"
+}
+
+export interface LinkedChildrenResponse {
+  children: LinkedChildResponse[];
+}

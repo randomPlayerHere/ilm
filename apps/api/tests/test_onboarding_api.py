@@ -709,3 +709,77 @@ def test_join_class_non_student_returns_403() -> None:
             assert resp.status_code == 403
 
     asyncio.run(scenario())
+
+
+# ─── Parent linked children ─────────────────────────────────────────────────
+
+
+def test_get_linked_children_returns_empty_when_no_links() -> None:
+    async def scenario() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            resp = await client.get(
+                "/onboarding/parent/children",
+                headers=_parent_headers(),
+            )
+            assert resp.status_code == 200
+            body = resp.json()
+            assert body["children"] == []
+
+    asyncio.run(scenario())
+
+
+def test_get_linked_children_returns_linked_child_with_class() -> None:
+    async def scenario() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            # Add student to class and generate invite link
+            student_id = await _add_student_to_class(client)
+            gen_resp = await client.post(
+                f"/onboarding/classes/cls_1/students/{student_id}/invite-link",
+                headers=_teacher_headers(),
+            )
+            token = gen_resp.json()["token"]
+            # Parent accepts invite
+            await client.post(f"/onboarding/invite/{token}/accept", headers=_parent_headers())
+
+            # Fetch linked children
+            resp = await client.get(
+                "/onboarding/parent/children",
+                headers=_parent_headers(),
+            )
+            assert resp.status_code == 200
+            body = resp.json()
+            assert len(body["children"]) == 1
+            child = body["children"][0]
+            assert child["student_id"] == student_id
+            assert "student_name" in child
+            assert "link_id" in child
+            assert "consent_status" in child
+            assert child["class_name"] == "Math Period 3"
+            assert child["subject"] == "Mathematics"
+
+    asyncio.run(scenario())
+
+
+def test_get_linked_children_requires_parent_role() -> None:
+    async def scenario() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            resp = await client.get(
+                "/onboarding/parent/children",
+                headers=_teacher_headers(),  # teacher, not parent
+            )
+            assert resp.status_code == 403
+
+    asyncio.run(scenario())
+
+
+def test_get_linked_children_requires_auth() -> None:
+    async def scenario() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            resp = await client.get("/onboarding/parent/children")
+            assert resp.status_code == 401
+
+    asyncio.run(scenario())

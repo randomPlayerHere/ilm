@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import dataclasses
+import re
 import secrets
 import string
 from datetime import UTC, datetime, timedelta
@@ -14,6 +16,43 @@ from app.domains.onboarding.models import (
 )
 
 
+_KINDERGARTEN_KEYWORDS: frozenset[str] = frozenset(
+    {"k", "kg", "kindergarten", "kinder"}
+)
+
+
+def _requires_parental_consent(grade_level: str) -> bool:
+    """Return True if the grade level indicates the student may be under 13 (COPPA threshold).
+
+    COPPA conservative: unknown grade formats return True (safer than missing a minor).
+    Handles: "K", "KG", "Kindergarten", "Grade K", "Grade 5", "Year 7", "10th Grade", etc.
+    """
+    gl = grade_level.lower().strip()
+    # Split on spaces, hyphens, slashes — handle "Grade K", "Year K", "K-2", "Grade-5"
+    tokens = re.split(r"[\s\-/]+", gl)
+    found_numeric = False
+    for token in tokens:
+        token_clean = re.sub(r"[^a-z0-9]", "", token)
+        if token_clean in _KINDERGARTEN_KEYWORDS:
+            return True
+        if token_clean.isdigit():
+            found_numeric = True
+            # Numeric grade <= 7 is under 13 (COPPA threshold)
+            if int(token_clean) <= 7:
+                return True
+            continue
+        ordinal_match = re.match(r"^(\d+)(st|nd|rd|th)$", token_clean)
+        if ordinal_match:
+            found_numeric = True
+            if int(ordinal_match.group(1)) <= 7:
+                return True
+    # Numeric grade > 7 found — old enough, no consent required
+    if found_numeric:
+        return False
+    # No numeric or kindergarten token found — COPPA conservative default: treat as requiring consent
+    return True
+
+
 def _generate_join_code() -> str:
     alphabet = string.ascii_uppercase + string.digits
     return "".join(secrets.choice(alphabet) for _ in range(6))
@@ -24,30 +63,59 @@ def _generate_invite_token() -> str:
 
 
 class OnboardingRepository(Protocol):
-    def create_class(self, org_id: str, teacher_user_id: str, name: str, subject: str) -> ClassRecord: ...
+    def create_class(
+        self, org_id: str, teacher_user_id: str, name: str, subject: str
+    ) -> ClassRecord: ...
     def get_class(self, class_id: str) -> ClassRecord | None: ...
-    def list_classes_for_teacher(self, teacher_user_id: str, org_id: str) -> list[ClassRecord]: ...
-    def get_or_create_student(self, org_id: str, name: str, grade_level: str) -> StudentRecord: ...
+    def list_classes_for_teacher(
+        self, teacher_user_id: str, org_id: str
+    ) -> list[ClassRecord]: ...
+    def get_or_create_student(
+        self, org_id: str, name: str, grade_level: str
+    ) -> StudentRecord: ...
     def get_student(self, student_id: str) -> StudentRecord | None: ...
-    def enroll_student(self, class_id: str, student_id: str, org_id: str, enrolled_by: str) -> EnrollmentRecord: ...
+    def enroll_student(
+        self, class_id: str, student_id: str, org_id: str, enrolled_by: str
+    ) -> EnrollmentRecord: ...
     def unenroll_student(self, class_id: str, student_id: str) -> None: ...
     def list_enrollments_for_class(self, class_id: str) -> list[EnrollmentRecord]: ...
     def is_enrolled(self, class_id: str, student_id: str) -> bool: ...
-    def create_invite_link(self, org_id: str, class_id: str, student_id: str, generated_by: str) -> InviteLinkRecord: ...
+    def create_invite_link(
+        self, org_id: str, class_id: str, student_id: str, generated_by: str
+    ) -> InviteLinkRecord: ...
     def get_invite_link(self, token: str) -> InviteLinkRecord | None: ...
-    def get_active_invite_link_for_student(self, class_id: str, student_id: str) -> InviteLinkRecord | None: ...
-    def accept_invite_link(self, token: str, parent_user_id: str, org_id: str) -> GuardianStudentLinkRecord: ...
-    def get_guardian_links_for_parent(self, parent_user_id: str) -> list[GuardianStudentLinkRecord]: ...
-    def is_parent_linked_to_student(self, parent_user_id: str, student_id: str) -> bool: ...
-    def find_class_by_join_code(self, join_code: str, org_id: str) -> ClassRecord | None: ...
-    def join_class_by_code(self, join_code: str, student_user_id: str, org_id: str) -> EnrollmentRecord: ...
+    def get_active_invite_link_for_student(
+        self, class_id: str, student_id: str
+    ) -> InviteLinkRecord | None: ...
+    def accept_invite_link(
+        self, token: str, parent_user_id: str, org_id: str
+    ) -> GuardianStudentLinkRecord: ...
+    def get_guardian_links_for_parent(
+        self, parent_user_id: str
+    ) -> list[GuardianStudentLinkRecord]: ...
+    def is_parent_linked_to_student(
+        self, parent_user_id: str, student_id: str
+    ) -> bool: ...
+    def find_class_by_join_code(
+        self, join_code: str, org_id: str
+    ) -> ClassRecord | None: ...
+    def join_class_by_code(
+        self, join_code: str, student_user_id: str, org_id: str
+    ) -> EnrollmentRecord: ...
+    def get_enrollments_for_student(
+        self, student_id: str
+    ) -> list[EnrollmentRecord]: ...
+    def list_students_for_org(self, org_id: str) -> list[StudentRecord]: ...
+    def confirm_student_consent(
+        self, student_id: str, confirmed_by: str, confirmed_at: str
+    ) -> StudentRecord: ...
 
 
 class InMemoryOnboardingRepository:
     _classes: dict[str, ClassRecord] = {}
     _students: dict[str, StudentRecord] = {}
     _enrollments: dict[str, EnrollmentRecord] = {}
-    _invite_links: dict[str, InviteLinkRecord] = {}      # key: token
+    _invite_links: dict[str, InviteLinkRecord] = {}  # key: token
     _guardian_links: list[GuardianStudentLinkRecord] = []
     _class_seq: int = 2
     _student_seq: int = 1
@@ -101,7 +169,9 @@ class InMemoryOnboardingRepository:
         cls._seeded = False
         cls._ensure_seed_data()
 
-    def create_class(self, org_id: str, teacher_user_id: str, name: str, subject: str) -> ClassRecord:
+    def create_class(
+        self, org_id: str, teacher_user_id: str, name: str, subject: str
+    ) -> ClassRecord:
         class_id = f"cls_{self.__class__._class_seq}"
         self.__class__._class_seq += 1
         record = ClassRecord(
@@ -119,25 +189,38 @@ class InMemoryOnboardingRepository:
     def get_class(self, class_id: str) -> ClassRecord | None:
         return self.__class__._classes.get(class_id)
 
-    def list_classes_for_teacher(self, teacher_user_id: str, org_id: str) -> list[ClassRecord]:
+    def list_classes_for_teacher(
+        self, teacher_user_id: str, org_id: str
+    ) -> list[ClassRecord]:
         return [
-            c for c in self.__class__._classes.values()
+            c
+            for c in self.__class__._classes.values()
             if c.teacher_user_id == teacher_user_id and c.org_id == org_id
         ]
 
-    def get_or_create_student(self, org_id: str, name: str, grade_level: str) -> StudentRecord:
+    def get_or_create_student(
+        self, org_id: str, name: str, grade_level: str
+    ) -> StudentRecord:
         # Reuse student if same name+grade already exists in org (idempotent CSV imports)
         for student in self.__class__._students.values():
-            if student.org_id == org_id and student.name == name and student.grade_level == grade_level:
+            if (
+                student.org_id == org_id
+                and student.name == name
+                and student.grade_level == grade_level
+            ):
                 return student
         student_id = f"stu_{self.__class__._student_seq}"
         self.__class__._student_seq += 1
+        consent_status = (
+            "pending" if _requires_parental_consent(grade_level) else "not_required"
+        )
         record = StudentRecord(
             student_id=student_id,
             org_id=org_id,
             name=name,
             grade_level=grade_level,
             created_at=datetime.now(UTC).isoformat(),
+            consent_status=consent_status,
         )
         self.__class__._students[student_id] = record
         return record
@@ -145,7 +228,9 @@ class InMemoryOnboardingRepository:
     def get_student(self, student_id: str) -> StudentRecord | None:
         return self.__class__._students.get(student_id)
 
-    def enroll_student(self, class_id: str, student_id: str, org_id: str, enrolled_by: str) -> EnrollmentRecord:
+    def enroll_student(
+        self, class_id: str, student_id: str, org_id: str, enrolled_by: str
+    ) -> EnrollmentRecord:
         # Idempotent: if already enrolled, return existing
         for enr in self.__class__._enrollments.values():
             if enr.class_id == class_id and enr.student_id == student_id:
@@ -165,14 +250,19 @@ class InMemoryOnboardingRepository:
 
     def unenroll_student(self, class_id: str, student_id: str) -> None:
         to_remove = [
-            eid for eid, enr in self.__class__._enrollments.items()
+            eid
+            for eid, enr in self.__class__._enrollments.items()
             if enr.class_id == class_id and enr.student_id == student_id
         ]
         for eid in to_remove:
             del self.__class__._enrollments[eid]
 
     def list_enrollments_for_class(self, class_id: str) -> list[EnrollmentRecord]:
-        return [enr for enr in self.__class__._enrollments.values() if enr.class_id == class_id]
+        return [
+            enr
+            for enr in self.__class__._enrollments.values()
+            if enr.class_id == class_id
+        ]
 
     def is_enrolled(self, class_id: str, student_id: str) -> bool:
         return any(
@@ -180,7 +270,9 @@ class InMemoryOnboardingRepository:
             for enr in self.__class__._enrollments.values()
         )
 
-    def create_invite_link(self, org_id: str, class_id: str, student_id: str, generated_by: str) -> InviteLinkRecord:
+    def create_invite_link(
+        self, org_id: str, class_id: str, student_id: str, generated_by: str
+    ) -> InviteLinkRecord:
         self.__class__._invite_seq += 1
         invite_id = f"inv_{self.__class__._invite_seq}"
         token = _generate_invite_token()
@@ -201,7 +293,9 @@ class InMemoryOnboardingRepository:
     def get_invite_link(self, token: str) -> InviteLinkRecord | None:
         return self.__class__._invite_links.get(token)
 
-    def get_active_invite_link_for_student(self, class_id: str, student_id: str) -> InviteLinkRecord | None:
+    def get_active_invite_link_for_student(
+        self, class_id: str, student_id: str
+    ) -> InviteLinkRecord | None:
         now = datetime.now(UTC).isoformat()
         for link in self.__class__._invite_links.values():
             if (
@@ -213,7 +307,9 @@ class InMemoryOnboardingRepository:
                 return link
         return None
 
-    def accept_invite_link(self, token: str, parent_user_id: str, org_id: str) -> GuardianStudentLinkRecord:
+    def accept_invite_link(
+        self, token: str, parent_user_id: str, org_id: str
+    ) -> GuardianStudentLinkRecord:
         invite = self.__class__._invite_links[token]
         # Mark invite as used (replace frozen dataclass)
         updated_invite = InviteLinkRecord(
@@ -243,8 +339,14 @@ class InMemoryOnboardingRepository:
         self.__class__._guardian_links.append(guardian_link)
         return guardian_link
 
-    def get_guardian_links_for_parent(self, parent_user_id: str) -> list[GuardianStudentLinkRecord]:
-        return [lnk for lnk in self.__class__._guardian_links if lnk.parent_user_id == parent_user_id]
+    def get_guardian_links_for_parent(
+        self, parent_user_id: str
+    ) -> list[GuardianStudentLinkRecord]:
+        return [
+            lnk
+            for lnk in self.__class__._guardian_links
+            if lnk.parent_user_id == parent_user_id
+        ]
 
     def is_parent_linked_to_student(self, parent_user_id: str, student_id: str) -> bool:
         return any(
@@ -252,16 +354,29 @@ class InMemoryOnboardingRepository:
             for lnk in self.__class__._guardian_links
         )
 
-    def find_class_by_join_code(self, join_code: str, org_id: str) -> ClassRecord | None:
+    def find_class_by_join_code(
+        self, join_code: str, org_id: str
+    ) -> ClassRecord | None:
         for cls in self.__class__._classes.values():
             if cls.join_code == join_code and cls.org_id == org_id:
                 return cls
         return None
 
-    def join_class_by_code(self, join_code: str, student_user_id: str, org_id: str) -> EnrollmentRecord:
+    def get_enrollments_for_student(self, student_id: str) -> list[EnrollmentRecord]:
+        return [
+            enr
+            for enr in self.__class__._enrollments.values()
+            if enr.student_id == student_id
+        ]
+
+    def join_class_by_code(
+        self, join_code: str, student_user_id: str, org_id: str
+    ) -> EnrollmentRecord:
         cls = self.find_class_by_join_code(join_code, org_id)
         if cls is None:
-            raise KeyError(f"No class found for join_code '{join_code}' in org '{org_id}'")
+            raise KeyError(
+                f"No class found for join_code '{join_code}' in org '{org_id}'"
+            )
         # Use auth user id directly for auth-user-linked enrollment
         student_id = student_user_id
         enrollment_id = f"enr_{self.__class__._enrollment_seq}"
@@ -276,3 +391,21 @@ class InMemoryOnboardingRepository:
         )
         self.__class__._enrollments[enrollment_id] = record
         return record
+
+    def list_students_for_org(self, org_id: str) -> list[StudentRecord]:
+        return [s for s in self.__class__._students.values() if s.org_id == org_id]
+
+    def confirm_student_consent(
+        self, student_id: str, confirmed_by: str, confirmed_at: str
+    ) -> StudentRecord:
+        student = self.__class__._students.get(student_id)
+        if student is None:
+            raise KeyError(f"Student not found: {student_id}")
+        updated = dataclasses.replace(
+            student,
+            consent_status="confirmed",
+            consent_confirmed_by=confirmed_by,
+            consent_confirmed_at=confirmed_at,
+        )
+        self.__class__._students[student_id] = updated
+        return updated

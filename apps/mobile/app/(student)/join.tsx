@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { YStack, Text, Button, Input, Spinner } from "tamagui";
 import { colors, spacing, fontSizes } from "@ilm/design-tokens";
 import { useAuth } from "../../src/contexts/AuthContext";
@@ -13,6 +13,7 @@ import {
 export default function JoinClassScreen() {
   const { token } = useAuth();
   const router = useRouter();
+  const { onboardingReturn } = useLocalSearchParams<{ onboardingReturn?: string }>();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +24,11 @@ export default function JoinClassScreen() {
     setError(null);
     try {
       await joinClassByCode(token, code);
-      router.replace("/(student)");
+      if (onboardingReturn === "1") {
+        router.replace({ pathname: "/onboarding", params: { step: "1" } });
+      } else {
+        router.replace("/(student)");
+      }
     } catch (err) {
       if (err instanceof InvalidJoinCodeError) {
         setError("Invalid or expired join code. Check with your teacher.");

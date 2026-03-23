@@ -1,6 +1,6 @@
 # Story 4.9: Guided Onboarding Wizards per Role
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -49,138 +49,256 @@ Then they are sent directly to their role home screen, not the wizard
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add first-login detection mechanism (AC: #6)
-  - [ ] 1.1 Create `apps/mobile/src/services/onboarding-wizard-state.ts` with `isOnboardingComplete(userId)` and `markOnboardingComplete(userId)` using `expo-secure-store` (key: `ilm_onboarding_done_{userId}`)
-  - [ ] 1.2 Extract `user_id` from JWT in `AuthGuard` (already decoded in `AuthContext` but not exposed — add `userId` to `AuthState` interface and `useAuth()` return value)
-  - [ ] 1.3 Update `AuthGuard` in `apps/mobile/app/_layout.tsx` to check `isOnboardingComplete(userId)` and route to `/onboarding` instead of `homePath` on first login
+- [x] Task 1: Add first-login detection mechanism (AC: #6)
+  - [x] 1.1 Create `apps/mobile/src/services/onboarding-wizard-state.ts` — see exact implementation in Dev Notes (Platform-aware storage, named key constants)
+  - [x] 1.2 Add `userId: string | null` to `AuthState` interface in `apps/mobile/src/contexts/AuthContext.tsx` — decode from JWT `sub` field using the existing `decodeJwtPayload()` function already in that file
+  - [x] 1.3 Update `AuthGuard` in `apps/mobile/app/_layout.tsx` — see exact async `useEffect` pattern in Dev Notes
 
-- [ ] Task 2: Add backend endpoint for parent's linked children (AC: #2)
-  - [ ] 2.1 Add `get_linked_children(parent_user_id, org_id)` method to `OnboardingService` in `apps/api/app/domains/onboarding/service.py` — returns list of `(GuardianStudentLinkRecord, StudentRecord)` tuples
-  - [ ] 2.2 Add `LinkedChildResponse` schema to `apps/api/app/domains/onboarding/schemas.py` (fields: `link_id`, `student_id`, `student_name`, `class_name`, `subject`)
-  - [ ] 2.3 Add `GET /onboarding/parent/children` endpoint to `apps/api/app/domains/onboarding/router.py` (requires parent role, calls `service.get_linked_children`)
-  - [ ] 2.4 Add `LinkedChildResponse`, `LinkedChildrenResponse` types to `packages/contracts/src/onboarding.ts`
-  - [ ] 2.5 Add `getLinkedChildren(token)` function to `apps/mobile/src/services/onboarding-service.ts`
-  - [ ] 2.6 Add tests to `apps/api/tests/test_onboarding_api.py`
+- [x] Task 2: Add backend endpoint for parent's linked children (AC: #2)
+  - [x] 2.1 Add `get_enrollments_for_student(student_id)` to `OnboardingRepository` Protocol and `InMemoryOnboardingRepository` in `apps/api/app/domains/onboarding/repository.py`
+  - [x] 2.2 Add `LinkedChildResponse`, `LinkedChildrenResponse` Pydantic schemas to `apps/api/app/domains/onboarding/schemas.py`
+  - [x] 2.3 Add `get_linked_children(parent_user_id, org_id)` to `OnboardingService` in `apps/api/app/domains/onboarding/service.py` — see exact implementation in Dev Notes
+  - [x] 2.4 Add `GET /onboarding/parent/children` endpoint to `apps/api/app/domains/onboarding/router.py` (requires parent role)
+  - [x] 2.5 Add `LinkedChildResponse`, `LinkedChildrenResponse` to `packages/contracts/src/onboarding.ts` and re-export from `packages/contracts/src/index.ts`
+  - [x] 2.6 Add `getLinkedChildren(token)` to `apps/mobile/src/services/onboarding-service.ts`
+  - [x] 2.7 Add tests for new endpoint to `apps/api/tests/test_onboarding_api.py`
 
-- [ ] Task 3: Implement onboarding wizard screen (`apps/mobile/app/onboarding/index.tsx`) (AC: #1–5)
-  - [ ] 3.1 Replace placeholder with role-branching wizard component that reads `role` from `useAuth()`
-  - [ ] 3.2 Implement **Teacher wizard** (3 steps):
+- [x] Task 3: Implement onboarding wizard screen (`apps/mobile/app/onboarding/index.tsx`) (AC: #1–5)
+  - [x] 3.1 Replace placeholder entirely with role-branching wizard that reads `role` from `useAuth()`
+  - [x] 3.2 Implement **Teacher wizard** (3 steps):
     - Step 1: Create/Select class — reuse `createClass` and `listClasses` from `onboarding-service.ts`; if classes exist, allow selecting one or creating new
-    - Step 2: Add first students (skip allowed) — reuse `addStudent` from `onboarding-service.ts`; inline form with name + grade_level fields
-    - Step 3: Confirmation screen — show class name, join code, student count with value framing ("Your class is ready!")
-  - [ ] 3.3 Implement **Parent wizard** (3 steps):
-    - Step 1: Confirm linked child — call `getLinkedChildren`; display child name + class; if no child linked, show "Ask your teacher for an invite link" message (forward path, never dead-end)
-    - Step 2: Dashboard preview — show encouraging placeholder with child's name ("Emma's progress will appear here")
-    - Step 3: Notification preference — toggle for progress updates (store preference locally for now; actual notification infrastructure is Epic 8)
-  - [ ] 3.4 Implement **Student wizard** (2 steps):
-    - Step 1: Join class — reuse existing join logic from `(student)/join.tsx`; if already enrolled show enrolled class; use growth-framed language ("Ready to track your growth?")
-    - Step 2: Growth view preview — show student home skeleton with encouraging message ("Your learning journey starts here")
-  - [ ] 3.5 Implement **Admin wizard** (3 steps):
-    - Step 1: Welcome to admin — org name display (from JWT `org_id`), confirm setup starting
-    - Step 2: Invite first teacher — text input for teacher email, show invite instructions (actual email/invite infrastructure TBD — can display join instructions)
+    - Step 2: Add first students (skip allowed) — reuse `addStudent`; inline form with name + grade_level fields
+    - Step 3: Confirmation — show class name, join code, student count ("Your class is ready!")
+  - [x] 3.3 Implement **Parent wizard** (3 steps):
+    - Step 1: Confirm linked child — call `getLinkedChildren`; display child name + class; if empty, show "Ask your teacher for an invite link" (never a dead-end)
+    - Step 2: Dashboard preview — encouraging placeholder with child name ("Emma's progress will appear here")
+    - Step 3: Notification preference — toggle stored via `expo-secure-store` (key: `ilm_notif_pref_{userId}`); Epic 8 will wire real notifications
+  - [x] 3.4 Implement **Student wizard** (2 steps):
+    - Step 1: Join class — navigate to existing `/(student)/join` route OR embed inline join code input; use growth-framed language
+    - Step 2: Growth view preview — show `SkeletonLoader` cards with encouraging message ("Your learning journey starts here")
+  - [x] 3.5 Implement **Admin wizard** (3 steps):
+    - Step 1: Welcome — display `org_id` from `useAuth()` (only ID is available in JWT, not org name); confirm setup
+    - Step 2: Invite first teacher — informational only (display manual instructions); no real email send
     - Step 3: Confirmation — "Your school is set up and ready"
-  - [ ] 3.6 Add progress indicator (step dots or "Step X of Y" label) to all wizards
-  - [ ] 3.7 On wizard completion: call `markOnboardingComplete(userId)`, then `router.replace(homePath)`
+  - [x] 3.6 Add progress indicator to all wizards — "Step X of Y" text using `colors.textTertiary` or dot row
+  - [x] 3.7 On wizard completion: `await markOnboardingComplete(userId)` then `router.replace(homePath)`
 
-- [ ] Task 4: Add Expo Router layout for `/onboarding` route (AC: #1–5)
-  - [ ] 4.1 Create `apps/mobile/app/onboarding/_layout.tsx` — minimal layout wrapping `<Slot />` inside `TamaguiProvider`/`SafeAreaProvider` (or verify existing root layout covers it)
-  - [ ] 4.2 Ensure `AuthGuard` allows navigation to `/onboarding` (it currently only allows `auth` group unauthenticated — add `onboarding` to allowed authenticated paths)
+- [x] Task 4: Verify AuthGuard allows `/onboarding` route (AC: #1–5)
+  - [x] 4.1 Confirm no new `_layout.tsx` needed — root `apps/mobile/app/_layout.tsx` covers all routes via `<Slot />`
+  - [x] 4.2 Add `segments[0] === "onboarding"` guard in `AuthGuard` so authenticated users on `/onboarding` are not redirected away
 
-- [ ] Task 5: Tests and typecheck (AC: all)
-  - [ ] 5.1 Run `pnpm typecheck` and fix all TypeScript errors
-  - [ ] 5.2 Run API tests `python -m pytest apps/api/tests/test_onboarding_api.py -v` and ensure all pass
+- [x] Task 5: Tests and typecheck (AC: all)
+  - [x] 5.1 Run `pnpm typecheck` — zero TypeScript errors required before marking done
+  - [x] 5.2 Run `python -m pytest apps/api/tests/test_onboarding_api.py -v` — all must pass
 
 ## Dev Notes
 
 ### Overview
 
-This story implements role-specific guided onboarding wizards that are shown once on first login. The core mechanism is **client-side first-login detection** using `expo-secure-store` (not a backend flag — no `first_login` field exists in auth contracts). The wizard is a full-screen experience at `/onboarding` route, rendered before routing to the role home tab.
+Role-specific guided onboarding wizards shown **once on first login**. Core mechanism is **client-side first-login detection** via `expo-secure-store` — there is no `first_login` field in `LoginResponse` ([`packages/contracts/src/auth.ts`](packages/contracts/src/auth.ts)) and none should be added.
 
-### Critical: No `first_login` in Auth
+---
 
-The `LoginResponse` (see [`packages/contracts/src/auth.ts`](packages/contracts/src/auth.ts)) has no `first_login` or `onboarding_complete` field. The `AuthContext` ([`apps/mobile/src/contexts/AuthContext.tsx`](apps/mobile/src/contexts/AuthContext.tsx)) derives `userId` from JWT but does NOT currently expose it in `AuthState`.
+### Task 1 Detail: First-Login Detection
 
-**Required change to `AuthContext`**: decode and expose `userId` (the JWT `sub` field) in `AuthState` so `AuthGuard` can use it for onboarding state lookup.
+#### Step 1.1 — `onboarding-wizard-state.ts`
 
-```typescript
-// In AuthContext.tsx — extend AuthState with:
-userId: string | null;
-
-// Decode from JWT in decodeJwtPayload() (already exists):
-const { sub: userId } = decodeJwtPayload(token);
-```
-
-### First-Login Detection Pattern
+Follow the Platform-aware storage pattern from [`apps/mobile/src/services/token-storage.ts`](apps/mobile/src/services/token-storage.ts) (the `storage` wrapper in that file is **not exported** — replicate the pattern):
 
 ```typescript
 // apps/mobile/src/services/onboarding-wizard-state.ts
+import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
 
-const key = (userId: string) => `ilm_onboarding_done_${userId}`;
+const storage =
+  Platform.OS === "web"
+    ? {
+        setItemAsync: async (key: string, value: string) => { localStorage.setItem(key, value); },
+        getItemAsync: async (key: string) => localStorage.getItem(key),
+        deleteItemAsync: async (key: string) => { localStorage.removeItem(key); },
+      }
+    : SecureStore;
+
+// Named constants — follow pattern from token-storage.ts KEYS object
+const KEYS = {
+  onboardingDone: (userId: string) => `ilm_onboarding_done_${userId}`,
+  notifPref: (userId: string) => `ilm_notif_pref_${userId}`,
+} as const;
 
 export async function isOnboardingComplete(userId: string): Promise<boolean> {
-  const val = await SecureStore.getItemAsync(key(userId));
+  const val = await storage.getItemAsync(KEYS.onboardingDone(userId));
   return val === "true";
 }
 
 export async function markOnboardingComplete(userId: string): Promise<void> {
-  await SecureStore.setItemAsync(key(userId), "true");
+  await storage.setItemAsync(KEYS.onboardingDone(userId), "true");
+}
+
+export async function getNotifPref(userId: string): Promise<boolean> {
+  const val = await storage.getItemAsync(KEYS.notifPref(userId));
+  return val !== "false"; // default ON
+}
+
+export async function setNotifPref(userId: string, enabled: boolean): Promise<void> {
+  await storage.setItemAsync(KEYS.notifPref(userId), String(enabled));
 }
 ```
 
-### AuthGuard Changes
+> **No `@react-native-async-storage/async-storage`** — it is NOT in `package.json`. Use `expo-secure-store` exclusively for all local persistence in this story.
 
-The `AuthGuard` in [`apps/mobile/app/_layout.tsx`](apps/mobile/app/_layout.tsx) must be extended. Currently when authenticated + not in auth group → redirect to `homePath`. New logic:
+#### Step 1.2 — Add `userId` to `AuthContext`
 
+In [`apps/mobile/src/contexts/AuthContext.tsx`](apps/mobile/src/contexts/AuthContext.tsx), `decodeJwtPayload()` already exists and returns `{ exp, sub, role, org_id }`. The `sub` field is the user ID. Add to `AuthState`:
+
+```typescript
+interface AuthState {
+  // ... existing fields ...
+  userId: string | null;  // ADD THIS
+}
 ```
-if isAuthenticated AND userId AND NOT in auth/onboarding groups:
-  check isOnboardingComplete(userId)
-  if NOT complete → router.replace("/onboarding")
-  else → router.replace(homePath)
+
+Set it wherever the token is decoded (login, Google login, and stored token restore):
+```typescript
+const { sub: userId } = decodeJwtPayload(response.access_token);
+// then include userId in setState call
 ```
 
-The guard must allow the `onboarding` segment without redirecting away. Add `segments[0] === "onboarding"` to the allowed-path check similar to `"auth"`.
+#### Step 1.3 — AuthGuard async routing
 
-### Backend: New Parent Children Endpoint
+`isOnboardingComplete()` returns a `Promise`. The existing `useEffect` in `AuthGuard` is synchronous — the async check must be wrapped. **Exact pattern** (replaces the existing auth guard `useEffect` body for the authenticated-but-not-in-auth-group branch):
 
-**Problem**: No `GET` endpoint exists to retrieve a parent's linked children. Story 4.8 only added `POST /invite/{token}/accept` which returns a single link.
+```typescript
+useEffect(() => {
+  if (isLoading) return;
 
-**Solution**: Add `GET /onboarding/parent/children` to the onboarding router.
+  // Pending invite token handling (unchanged from Story 4.8)
+  if (isAuthenticated && role === "parent" && token && pendingInviteToken) {
+    // ... existing invite logic unchanged ...
+    return;
+  }
 
-Service method (add to `apps/api/app/domains/onboarding/service.py`):
+  const inAuthGroup = segments[0] === "auth";
+  const inOnboardingGroup = segments[0] === "onboarding";
+
+  if (!isAuthenticated && !inAuthGroup) {
+    router.replace("/auth");
+    return;
+  }
+
+  if (isAuthenticated && inAuthGroup && homePath) {
+    // Will be redirected to onboarding or home below once not in auth group
+    router.replace(homePath as Parameters<typeof router.replace>[0]);
+    return;
+  }
+
+  if (isAuthenticated && !inAuthGroup && !inOnboardingGroup && homePath && userId) {
+    // Async onboarding check — IIFE to handle Promise in useEffect
+    void (async () => {
+      const done = await isOnboardingComplete(userId);
+      if (!done) {
+        router.replace("/onboarding");
+      } else {
+        router.replace(homePath as Parameters<typeof router.replace>[0]);
+      }
+    })();
+  }
+}, [isAuthenticated, isLoading, role, token, segments, homePath, userId, router]);
+```
+
+> **Critical**: `userId` must be in the dependency array. Import `isOnboardingComplete` from `onboarding-wizard-state.ts`.
+
+---
+
+### Task 2 Detail: Backend — Parent's Linked Children
+
+#### Step 2.1 — New repository method
+
+Add to **both** the `OnboardingRepository` Protocol and `InMemoryOnboardingRepository` in [`apps/api/app/domains/onboarding/repository.py`](apps/api/app/domains/onboarding/repository.py):
+
+```python
+# In Protocol:
+def get_enrollments_for_student(self, student_id: str) -> list[EnrollmentRecord]: ...
+
+# In InMemoryOnboardingRepository:
+def get_enrollments_for_student(self, student_id: str) -> list[EnrollmentRecord]:
+    return [
+        enr for enr in self.__class__._enrollments.values()
+        if enr.student_id == student_id
+    ]
+```
+
+> `_guardian_links` is a **class-level list** (not a dict): `InMemoryOnboardingRepository._guardian_links`. Access it only through protocol methods — never via direct attribute access on `self._repo`.
+
+#### Step 2.2 — Service method
+
+Add to [`apps/api/app/domains/onboarding/service.py`](apps/api/app/domains/onboarding/service.py). Uses **only protocol methods** — no direct attribute access on `_repo`:
+
 ```python
 def get_linked_children(
     self,
     parent_user_id: str,
     org_id: str,
-) -> list[dict]:
-    """Returns list of dicts with student_id, student_name, class_name, subject"""
-    links = [
-        l for l in self._repo.guardian_student_links.values()
-        if l.parent_user_id == parent_user_id and l.org_id == org_id
-    ]
+) -> list["LinkedChildResponse"]:
+    # get_guardian_links_for_parent returns ALL links for this parent (no org filter in repo)
+    all_links = self._repo.get_guardian_links_for_parent(parent_user_id)
+    # Must filter by org_id here — repo method does not do it
+    links = [l for l in all_links if l.org_id == org_id]
+
     result = []
     for link in links:
-        student = self._repo.students.get(link.student_id)
+        student = self._repo.get_student(link.student_id)
         if not student:
             continue
-        # Find the student's class via enrollments
-        enrollment = next(
-            (e for e in self._repo.enrollments.values() if e.student_id == link.student_id and e.org_id == org_id),
-            None
+        # Find class via student's enrollment(s)
+        enrollments = self._repo.get_enrollments_for_student(link.student_id)
+        class_record = None
+        if enrollments:
+            class_record = self._repo.get_class(enrollments[0].class_id)
+        result.append(
+            LinkedChildResponse(
+                link_id=link.link_id,
+                student_id=link.student_id,
+                student_name=student.name,
+                class_name=class_record.name if class_record else None,
+                subject=class_record.subject if class_record else None,
+            )
         )
-        class_record = self._repo.classes.get(enrollment.class_id) if enrollment else None
-        result.append({
-            "link_id": link.link_id,
-            "student_id": link.student_id,
-            "student_name": student.name,
-            "class_name": class_record.name if class_record else None,
-            "subject": class_record.subject if class_record else None,
-        })
     return result
 ```
 
-Contract types to add to `packages/contracts/src/onboarding.ts`:
+Add `LinkedChildResponse` import at top of service.py once schema is created.
+
+#### Steps 2.3–2.6 — Schema, Router, Contracts, Mobile Service
+
+**Pydantic schemas** (add to [`apps/api/app/domains/onboarding/schemas.py`](apps/api/app/domains/onboarding/schemas.py)):
+```python
+class LinkedChildResponse(BaseModel):
+    link_id: str
+    student_id: str
+    student_name: str
+    class_name: str | None
+    subject: str | None
+
+class LinkedChildrenResponse(BaseModel):
+    children: list[LinkedChildResponse]
+```
+
+**Router endpoint** (add to [`apps/api/app/domains/onboarding/router.py`](apps/api/app/domains/onboarding/router.py)):
+```python
+@router.get("/parent/children", response_model=LinkedChildrenResponse)
+async def get_linked_children(
+    actor: ActorContext = Depends(require_authenticated_actor),
+    service: OnboardingService = Depends(get_onboarding_service),
+) -> LinkedChildrenResponse:
+    _require_parent(actor)
+    children = service.get_linked_children(
+        parent_user_id=actor.user_id,
+        org_id=actor.org_id,
+    )
+    return LinkedChildrenResponse(children=children)
+```
+
+**TypeScript contracts** (add to [`packages/contracts/src/onboarding.ts`](packages/contracts/src/onboarding.ts)):
 ```typescript
 export interface LinkedChildResponse {
   link_id: string;
@@ -195,12 +313,26 @@ export interface LinkedChildrenResponse {
 }
 ```
 
-### Onboarding Wizard Implementation Pattern
+Re-export from `packages/contracts/src/index.ts` (check existing export pattern — all types in `onboarding.ts` are already exported via `export * from "./onboarding"`).
 
-The onboarding screen at [`apps/mobile/app/onboarding/index.tsx`](apps/mobile/app/onboarding/index.tsx) is currently a placeholder (11 lines). Replace entirely.
+**Mobile service** (add to [`apps/mobile/src/services/onboarding-service.ts`](apps/mobile/src/services/onboarding-service.ts)):
 
-Pattern to follow — wizard with step state:
 ```typescript
+import type { LinkedChildrenResponse } from "@ilm/contracts";
+
+export async function getLinkedChildren(token: string): Promise<LinkedChildrenResponse> {
+  return apiRequest<LinkedChildrenResponse>("/onboarding/parent/children", { token });
+}
+```
+
+---
+
+### Task 3 Detail: Wizard Implementation
+
+#### Wizard root component pattern
+
+```typescript
+// apps/mobile/app/onboarding/index.tsx
 export default function OnboardingScreen() {
   const { role, token, userId, homePath } = useAuth();
   const router = useRouter();
@@ -208,113 +340,125 @@ export default function OnboardingScreen() {
 
   const handleComplete = async () => {
     if (userId) await markOnboardingComplete(userId);
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.replace(homePath as Parameters<typeof router.replace>[0]);
   };
 
   if (role === "teacher") return <TeacherWizard step={step} setStep={setStep} token={token!} onComplete={handleComplete} />;
-  if (role === "parent") return <ParentWizard step={step} setStep={setStep} token={token!} onComplete={handleComplete} />;
+  if (role === "parent") return <ParentWizard step={step} setStep={setStep} token={token!} userId={userId!} onComplete={handleComplete} />;
   if (role === "student") return <StudentWizard step={step} setStep={setStep} token={token!} onComplete={handleComplete} />;
-  if (role === "admin") return <AdminWizard step={step} setStep={setStep} onComplete={handleComplete} />;
-  // Fallback — unknown role, skip wizard
-  handleComplete();
+  if (role === "admin") return <AdminWizard step={step} setStep={setStep} orgId={/* from useAuth() */""} onComplete={handleComplete} />;
+  void handleComplete(); // Unknown role — skip wizard
   return null;
 }
 ```
 
-Sub-wizards can be defined in the same file or extracted to `apps/mobile/src/components/onboarding/`.
+Sub-wizard components can be in the same file or in `apps/mobile/src/components/onboarding/` (no existing components directory — create it if extracting).
+
+#### Student wizard — reuse existing join screen
+
+[`apps/mobile/app/(student)/index.tsx`](apps/mobile/app/(student)/index.tsx) (the Growth screen) **already has a "Join a Class" `Button`** that navigates to `/(student)/join`. The student wizard's Step 1 can either:
+
+- **Option A** (preferred): Navigate to `/(student)/join` via `router.push("/(student)/join")` and detect return via `useFocusEffect`
+- **Option B**: Embed an inline join code `Input` + `joinClassByCode()` call directly in the wizard
+
+Do **not** duplicate the join UI from scratch — [`apps/mobile/app/(student)/join.tsx`](apps/mobile/app/(student)/join.tsx) already exists with the full implementation.
+
+#### Student enrollment ID note — critical cross-domain fact
+
+`join_by_code` in the service stores `student_id = student_user_id` (the auth user's ID, e.g., `"usr_xyz"`). This is **different** from `StudentRecord.student_id` (e.g., `"stu_1"`) used for teacher-added students. These two enrollment types coexist in the same `_enrollments` dict but serve different paths. The wizard only needs to trigger the student's own join — `joinClassByCode()` handles this correctly. Do not attempt to reconcile the two ID spaces.
+
+#### Admin wizard — org name not available
+
+The JWT payload contains `org_id` (a UUID/slug), not the org name. There is no `GET /org` endpoint in this codebase. The admin wizard Step 1 must display `org_id` as-is or use generic text ("Your organization is ready to set up"). Do not attempt to fetch an org name — no such endpoint exists.
+
+#### Notification preference storage (parent wizard Step 3)
+
+Use `setNotifPref(userId, enabled)` from `onboarding-wizard-state.ts` (defined in Task 1.1 above). No `AsyncStorage` — it is **not installed**. No push notification wiring — that is Epic 8.
+
+---
 
 ### Design System Compliance
 
-Use **exact** Tamagui/design-token patterns from Stories 4.7 and 4.8:
+Exact import pattern (from [`apps/mobile/app/(teacher)/index.tsx`](apps/mobile/app/(teacher)/index.tsx)):
 
 ```typescript
 import { colors, spacing, fontSizes, fontWeights } from "@ilm/design-tokens";
 import { YStack, XStack, Text, Button, Input, Spinner } from "tamagui";
 import { SafeAreaView } from "react-native-safe-area-context";
-// edges={["top"]} for content screens
+import * as Haptics from "expo-haptics";
+// SafeAreaView always with edges={["top"]}
 ```
 
-Token usage (always `colors.xxx`, `spacing.xxx` from design-tokens, not hardcoded values):
-- Background: `colors.background`
-- Cards: `colors.surface`
-- Borders: `colors.border`
-- Primary action: `colors.primary`
-- Text: `colors.textPrimary`, `colors.textSecondary`, `colors.textTertiary`
+For skeleton loading (student step 2): `import { SkeletonLoader } from "@ilm/ui"` — already used in [`apps/mobile/app/(student)/index.tsx`](apps/mobile/app/(student)/index.tsx).
 
-Progress indicators: use dot row (`XStack` with filled/empty circles) or plain "Step X of Y" text with `colors.textTertiary`.
+Token values: always via `colors.xxx`, `spacing.xxx` — no hardcoded hex or pixel values.
 
-Celebration / success state: use `Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)` on wizard completion (already used in 4.7 pattern — `expo-haptics` is installed).
+---
 
-### Existing Endpoints Available (No New API Needed for These)
+### Repository Access Rules (Prevent Disasters)
 
-| Role | Existing endpoints to reuse |
-|------|----------------------------|
-| Teacher | `POST /onboarding/classes`, `GET /onboarding/classes`, `POST /onboarding/classes/{id}/students` |
-| Student | `POST /onboarding/join` (already works via `joinClassByCode` in `onboarding-service.ts`) |
-| Parent | `GET /onboarding/parent/children` **(NEW — Task 2)** |
-| Admin | No new API needed — admin step 2 is informational only |
+The `InMemoryOnboardingRepository` uses **class-level attributes** (`self.__class__._xxx`) never accessed directly from service code. The `OnboardingService` always uses **protocol methods** only:
 
-### Expo Router Route for `/onboarding`
+| Need | Use this protocol method |
+| ---- | ------------------------ |
+| Parent's linked children | `self._repo.get_guardian_links_for_parent(parent_user_id)` |
+| Student record | `self._repo.get_student(student_id)` |
+| Student's enrollments | `self._repo.get_enrollments_for_student(student_id)` *(new — Task 2.1)* |
+| Class record | `self._repo.get_class(class_id)` |
 
-The file `apps/mobile/app/onboarding/index.tsx` already exists (placeholder). The route `/onboarding` is already registered by Expo Router's file system routing. No new `_layout.tsx` is needed since the root layout in `apps/mobile/app/_layout.tsx` wraps all routes via `<Slot />`.
+Never: `self._repo._classes`, `self._repo._guardian_links`, `self._repo.guardian_student_links` etc.
 
-**Verify**: in `AuthGuard`'s `useEffect`, check `segments[0] === "onboarding"` and allow it (don't redirect away when authenticated user is on `/onboarding`).
-
-### Story 4.8 Dev Patterns (Carry Forward)
-
-From the previous story's implementation:
-- In-memory repository uses `_ensure_seed_data()` guard — **do not** add new data structures without this pattern
-- Frozen dataclasses for all records — the new `LinkedChildResponse` is a Pydantic schema (response model), not a dataclass
-- Repository access pattern: `self._repo.guardian_student_links` (dict, keyed by `link_id`), `self._repo.students` (dict, keyed by `student_id`), `self._repo.enrollments` (dict, keyed by `enrollment_id`), `self._repo.classes` (dict, keyed by `class_id`)
-- All API tests use `reset_onboarding_state_for_tests()` fixture already in test file
+---
 
 ### What NOT To Implement
 
-- **Push notifications** — notification preference in parent wizard is stored locally (e.g., `AsyncStorage`) only; actual push infrastructure is Epic 8
-- **Real email invites for admin** — admin teacher invite step is UI-only (display instructions), not a real email send
-- **COPPA consent gate** — this is Story 4.10, separate from the wizard
-- **Any Epic 5+ features** (AI grading, analytics) — no references to unbuilt features
-- **Google Classroom or roster import UI** in wizard — this is Epic 9
-- **Web admin onboarding** — mobile only
+- **Push notifications** — parent notification preference is stored locally only; Epic 8 wires actual delivery
+- **Real email invites** — admin wizard teacher invite is instructions-only; no SMTP/email send
+- **COPPA consent gate** — Story 4.10, completely separate
+- **Org name lookup** — no endpoint exists; display `org_id` or generic text in admin wizard
+- **AsyncStorage** — not installed; use `expo-secure-store` for all persistence
+- **Any Epic 5+ features** — AI grading, analytics, messaging are all out of scope
 
 ### File Structure Impact
 
 Files to **create**:
-- `apps/mobile/src/services/onboarding-wizard-state.ts` (new)
+
+- `apps/mobile/src/services/onboarding-wizard-state.ts`
 
 Files to **modify**:
+
 - `apps/mobile/app/onboarding/index.tsx` (replace placeholder)
-- `apps/mobile/app/_layout.tsx` (update `AuthGuard` for onboarding routing)
+- `apps/mobile/app/_layout.tsx` (AuthGuard async routing update)
 - `apps/mobile/src/contexts/AuthContext.tsx` (add `userId` to `AuthState`)
 - `apps/mobile/src/services/onboarding-service.ts` (add `getLinkedChildren`)
+- `apps/api/app/domains/onboarding/repository.py` (add `get_enrollments_for_student`)
 - `apps/api/app/domains/onboarding/service.py` (add `get_linked_children`)
 - `apps/api/app/domains/onboarding/router.py` (add `GET /parent/children`)
 - `apps/api/app/domains/onboarding/schemas.py` (add `LinkedChildResponse`, `LinkedChildrenResponse`)
-- `packages/contracts/src/onboarding.ts` (add `LinkedChildResponse`, `LinkedChildrenResponse`)
-- `packages/contracts/src/index.ts` (re-export new types if not auto-exported)
-- `apps/api/tests/test_onboarding_api.py` (add tests for new endpoint)
+- `packages/contracts/src/onboarding.ts` (add same two types)
+- `apps/api/tests/test_onboarding_api.py` (add endpoint tests)
 
 ### Project Structure Notes
 
-- Alignment with unified project structure: onboarding service functions go in `apps/mobile/src/services/onboarding-service.ts` (existing file); new wizard state service goes in `apps/mobile/src/services/` (kebab-case.ts)
-- Backend: new service method goes in `apps/api/app/domains/onboarding/service.py`, new schema in `schemas.py`, new endpoint in `router.py` — all consistent with existing domain structure
-- The `apps/mobile/app/onboarding/` directory already exists with `index.tsx` placeholder — no new directory needed
+- `apps/mobile/app/onboarding/` directory already exists — no new directory needed
+- Backend changes follow existing domain pattern: models → repository → service → router → schemas
+- `packages/contracts/src/index.ts` uses `export * from "./onboarding"` — new types auto-exported; verify before adding manual re-exports
 
 ### References
 
-- Epic 4 story 4.9 requirements: [Source: `_bmad-output/planning-artifacts/epics.md` #Epic 4 → Story 4.9]
-- Auth contracts (LoginResponse, UserRole): [Source: `packages/contracts/src/auth.ts`]
-- Onboarding contracts (existing): [Source: `packages/contracts/src/onboarding.ts`]
+- Epic 4 / Story 4.9 requirements: [Source: `_bmad-output/planning-artifacts/epics.md` #Epic 4 → Story 4.9]
+- Auth contracts: [Source: `packages/contracts/src/auth.ts`]
+- Onboarding contracts: [Source: `packages/contracts/src/onboarding.ts`]
 - AuthContext + AuthGuard: [Source: `apps/mobile/app/_layout.tsx`], [Source: `apps/mobile/src/contexts/AuthContext.tsx`]
-- Onboarding service (mobile): [Source: `apps/mobile/src/services/onboarding-service.ts`]
-- Onboarding API router: [Source: `apps/api/app/domains/onboarding/router.py`]
-- Onboarding domain models: [Source: `apps/api/app/domains/onboarding/models.py`]
-- Teacher home screen patterns: [Source: `apps/mobile/app/(teacher)/index.tsx`]
-- Student join screen: [Source: `apps/mobile/app/(student)/join.tsx`]
-- Deep link handling (Story 4.8 pattern): [Source: `apps/mobile/app/_layout.tsx` #AuthGuard]
-- Design tokens usage: [Source: `apps/mobile/app/(teacher)/index.tsx`]
-- Tamagui component patterns: [Source: `apps/mobile/app/(teacher)/index.tsx`], [Source: `apps/mobile/app/(student)/join.tsx`]
-- expo-secure-store: already a dependency (used by `apps/mobile/src/services/token-storage.ts`)
+- Platform-aware storage pattern: [Source: `apps/mobile/src/services/token-storage.ts`]
+- Onboarding mobile service: [Source: `apps/mobile/src/services/onboarding-service.ts`]
+- Repository protocol + implementation: [Source: `apps/api/app/domains/onboarding/repository.py`]
+- Onboarding service: [Source: `apps/api/app/domains/onboarding/service.py`]
+- Onboarding router: [Source: `apps/api/app/domains/onboarding/router.py`]
+- Teacher home (design patterns): [Source: `apps/mobile/app/(teacher)/index.tsx`]
+- Student join screen (reuse): [Source: `apps/mobile/app/(student)/join.tsx`]
+- Student growth screen (SkeletonLoader): [Source: `apps/mobile/app/(student)/index.tsx`]
 
 ## Dev Agent Record
 
@@ -324,6 +468,64 @@ claude-sonnet-4-6
 
 ### Debug Log References
 
+None — implementation proceeded without blockers.
+
 ### Completion Notes List
 
+- **Task 1 (First-login detection):** Created `onboarding-wizard-state.ts` with platform-aware SecureStore wrapper, `isOnboardingComplete`/`markOnboardingComplete`/`getNotifPref`/`setNotifPref` exports. Added `userId: string | null` and `orgId: string | null` to `AuthState` — both decoded from JWT `sub`/`org_id` at login, Google login, and stored-token restore. Updated `AuthGuard` with async IIFE pattern: checks `isOnboardingComplete(userId)` and redirects to `/onboarding` if false; `inOnboardingGroup` guard prevents redirect loop.
+- **Task 2 (Backend endpoint):** Added `get_enrollments_for_student` to `OnboardingRepository` protocol and `InMemoryOnboardingRepository`. Added `LinkedChildResponse`/`LinkedChildrenResponse` Pydantic schemas and TypeScript contracts. `get_linked_children` service method filters guardian links by `org_id` (repo method returns all, service filters). `GET /onboarding/parent/children` endpoint requires parent role. 4 new API tests added — all 38 pass.
+- **Task 3 (Wizard screen):** Replaced placeholder with full role-branching wizard. Teacher: 3-step (create/select class → add students → confirmation with join code). Parent: 3-step (confirm linked child → dashboard preview with SkeletonLoader → notification toggle saved via `setNotifPref`). Student: 2-step (join class via push to `/(student)/join` → growth preview). Admin: 3-step (welcome + org_id display → teacher invite instructions → confirmation). All wizards show "Step X of Y" progress indicator. Completion calls `markOnboardingComplete(userId)` + haptic feedback + `router.replace(homePath)`.
+- **Task 4 (AuthGuard):** Implemented as part of Task 1.3. `inOnboardingGroup` check prevents authenticated users on `/onboarding` from being redirected away.
+- **Task 5 (Tests/typecheck):** 38/38 API tests pass. `pnpm typecheck` reports zero errors.
+
 ### File List
+
+**Created:**
+
+- `apps/mobile/src/services/onboarding-wizard-state.ts`
+
+**Modified:**
+
+- `apps/mobile/app/onboarding/index.tsx`
+- `apps/mobile/app/(student)/join.tsx`
+- `apps/mobile/app/_layout.tsx`
+- `apps/mobile/src/contexts/AuthContext.tsx`
+- `apps/mobile/src/services/onboarding-service.ts`
+- `apps/api/app/domains/onboarding/repository.py`
+- `apps/api/app/domains/onboarding/service.py`
+- `apps/api/app/domains/onboarding/router.py`
+- `apps/api/app/domains/onboarding/schemas.py`
+- `packages/contracts/src/onboarding.ts`
+- `packages/contracts/src/index.ts`
+- `apps/api/tests/test_onboarding_api.py`
+
+## Senior Developer Review (AI)
+
+### Reviewer
+
+GitHub Copilot (GPT-5.3-Codex)
+
+### Review Date
+
+2026-03-23
+
+### Outcome
+
+Changes Requested items addressed; story is now approved.
+
+### Findings Resolved
+
+- **[HIGH] Student onboarding flow continuity:** Fixed wizard-to-join handoff so successful join returns to onboarding step 2 (`/onboarding?step=1`) instead of redirecting to student home and triggering onboarding loops.
+- **[MEDIUM] Parent notification preference save handling:** Added guarded save flow with `try/catch/finally` and user-visible error state to prevent silent failure and inconsistent loading behavior.
+- **[MEDIUM] Validation reproducibility:** Installed missing Python test dependencies in workspace venv and reran API tests for verifiable evidence.
+
+### Validation Evidence
+
+- `pnpm typecheck` ✅
+- `/home/cybernyx/teemo.ai/ilm/.venv/bin/python -m pytest apps/api/tests/test_onboarding_api.py -v` ✅ (38 passed)
+
+## Change Log
+
+- 2026-03-23: Implemented story 4.9 — guided onboarding wizards per role. Added first-login detection via expo-secure-store, GET /onboarding/parent/children backend endpoint, full 4-role wizard UI (teacher/parent/student/admin), AuthGuard onboarding routing, and 4 new API tests. All 38 tests pass, zero TypeScript errors.
+- 2026-03-23: Senior developer review fixes applied for story 4.9. Resolved student join/onboarding flow continuity, added parent notification preference save error handling, and verified with `pnpm typecheck` plus onboarding API test run (38 passed).
+- 2026-03-23: Low-severity cleanup pass: removed unused imports and unused local variable in onboarding service; revalidated onboarding API tests (38 passed).

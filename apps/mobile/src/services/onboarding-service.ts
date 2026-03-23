@@ -5,6 +5,7 @@ import type {
   CsvImportResponse,
   JoinCodeRequest,
   JoinCodeResponse,
+  LinkedChildrenResponse,
   RosterResponse,
   StudentCreateRequest,
   StudentResponse,
@@ -139,6 +140,10 @@ export async function joinClassByCode(
     }
     throw error;
   }
+}
+
+export async function getLinkedChildren(token: string): Promise<LinkedChildrenResponse> {
+  return apiRequest<LinkedChildrenResponse>("/onboarding/parent/children", { token });
 }
 
 export async function importStudentsCsv(

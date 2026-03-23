@@ -14,6 +14,7 @@ import {
   InviteLinkAlreadyUsedError,
   InviteLinkExpiredError,
 } from "../src/services/invite-service";
+import { isOnboardingComplete } from "../src/services/onboarding-wizard-state";
 
 // Module-level pending token (survives navigation during auth flow)
 let pendingInviteToken: string | null = null;
@@ -22,7 +23,7 @@ export function getPendingInviteToken(): string | null { return pendingInviteTok
 export function clearPendingInviteToken(): void { pendingInviteToken = null; }
 
 function AuthGuard() {
-  const { isLoading, isAuthenticated, homePath, role, token } = useAuth();
+  const { isLoading, isAuthenticated, homePath, role, token, userId } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const initialUrlHandled = useRef(false);
@@ -88,13 +89,30 @@ function AuthGuard() {
     }
 
     const inAuthGroup = segments[0] === "auth";
+    const inOnboardingGroup = segments[0] === "onboarding";
 
     if (!isAuthenticated && !inAuthGroup) {
       router.replace("/auth");
-    } else if (isAuthenticated && inAuthGroup && homePath) {
-      router.replace(homePath as Parameters<typeof router.replace>[0]);
+      return;
     }
-  }, [isAuthenticated, isLoading, role, token, segments, homePath, router]);
+
+    if (isAuthenticated && inAuthGroup && homePath) {
+      router.replace(homePath as Parameters<typeof router.replace>[0]);
+      return;
+    }
+
+    if (isAuthenticated && !inAuthGroup && !inOnboardingGroup && homePath && userId) {
+      // Async onboarding check — IIFE to handle Promise in useEffect
+      void (async () => {
+        const done = await isOnboardingComplete(userId);
+        if (!done) {
+          router.replace("/onboarding");
+        } else {
+          router.replace(homePath as Parameters<typeof router.replace>[0]);
+        }
+      })();
+    }
+  }, [isAuthenticated, isLoading, role, token, segments, homePath, userId, router]);
 
   return <Slot />;
 }

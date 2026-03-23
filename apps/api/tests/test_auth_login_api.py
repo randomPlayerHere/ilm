@@ -13,7 +13,9 @@ def setup_function():
 def test_login_success_returns_token_and_home_path():
     async def scenario():
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             response = await client.post(
                 "/auth/login",
                 json={
@@ -27,7 +29,7 @@ def test_login_success_returns_token_and_home_path():
             assert body["token_type"] == "bearer"
             assert body["role"] == "teacher"
             assert body["org_id"] == "org_demo_1"
-            assert body["home_path"] == "/teacher"
+            assert body["home_path"] == "/(teacher)"
             assert isinstance(body["access_token"], str) and body["access_token"]
             assert body["expires_in"] > 0
 
@@ -37,7 +39,9 @@ def test_login_success_returns_token_and_home_path():
 def test_login_invalid_password_and_unknown_user_are_indistinguishable():
     async def scenario():
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             bad_password = await client.post(
                 "/auth/login",
                 json={"email": "teacher@example.com", "password": "bad-password"},
@@ -49,7 +53,11 @@ def test_login_invalid_password_and_unknown_user_are_indistinguishable():
 
             assert bad_password.status_code == 401
             assert unknown_user.status_code == 401
-            assert bad_password.json() == unknown_user.json() == {"detail": "Invalid credentials"}
+            assert (
+                bad_password.json()
+                == unknown_user.json()
+                == {"detail": "Invalid credentials"}
+            )
 
     asyncio.run(scenario())
 
@@ -57,7 +65,9 @@ def test_login_invalid_password_and_unknown_user_are_indistinguishable():
 def test_login_inactive_user_is_denied_with_generic_error():
     async def scenario():
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             response = await client.post(
                 "/auth/login",
                 json={
@@ -75,7 +85,9 @@ def test_login_inactive_user_is_denied_with_generic_error():
 def test_login_rejects_invalid_payload_shape():
     async def scenario():
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             response = await client.post(
                 "/auth/login",
                 json={
@@ -93,7 +105,9 @@ def test_login_rejects_invalid_payload_shape():
 def test_login_rate_limit_blocks_after_repeated_failures():
     async def scenario():
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             for _ in range(5):
                 fail = await client.post(
                     "/auth/login",
@@ -106,6 +120,8 @@ def test_login_rate_limit_blocks_after_repeated_failures():
                 json={"email": "teacher@example.com", "password": "bad-password"},
             )
             assert blocked.status_code == 429
-            assert blocked.json() == {"detail": "Too many login attempts. Try again later."}
+            assert blocked.json() == {
+                "detail": "Too many login attempts. Try again later."
+            }
 
     asyncio.run(scenario())

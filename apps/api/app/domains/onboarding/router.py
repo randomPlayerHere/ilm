@@ -14,6 +14,7 @@ from app.domains.onboarding.schemas import (
     InviteLinkResponse,
     JoinCodeRequest,
     JoinCodeResponse,
+    LinkedChildrenResponse,
     RosterResponse,
     StudentCreateRequest,
     StudentResponse,
@@ -225,6 +226,19 @@ async def accept_invite_link(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except AlreadyLinkedError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@router.get("/parent/children", response_model=LinkedChildrenResponse)
+async def get_linked_children(
+    actor: ActorContext = Depends(require_authenticated_actor),
+    service: OnboardingService = Depends(get_onboarding_service),
+) -> LinkedChildrenResponse:
+    _require_parent(actor)
+    children = service.get_linked_children(
+        parent_user_id=actor.user_id,
+        org_id=actor.org_id,
+    )
+    return LinkedChildrenResponse(children=children)
 
 
 @router.post("/join", response_model=JoinCodeResponse)

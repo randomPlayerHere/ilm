@@ -94,8 +94,8 @@ development_status:
   4-6-google-sign-in-on-mobile: done
   4-7-teacher-class-setup-and-student-management: done
   4-8-invite-links-join-codes-and-parent-student-linking: done
-  4-9-guided-onboarding-wizards-per-role: ready-for-dev
-  4-10-coppa-consent-confirmation-gate: backlog
+  4-9-guided-onboarding-wizards-per-role: done
+  4-10-coppa-consent-confirmation-gate: done
   epic-4-retrospective: optional
 
   # ============================================================

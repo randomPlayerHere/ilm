@@ -11,14 +11,23 @@ from app.domains.admin.service import (
     UserLifecycleError,
 )
 from app.domains.auth.repository import InMemoryAuthRepository
+from app.domains.onboarding.repository import InMemoryOnboardingRepository
+
+
+def _make_service() -> AdminService:
+    return AdminService(
+        repository=InMemoryAuthRepository(),
+        onboarding_repository=InMemoryOnboardingRepository(),
+    )
 
 
 def setup_function():
     InMemoryAuthRepository.reset_state()
+    InMemoryOnboardingRepository.reset_state()
 
 
 def test_create_organization_duplicate_slug_raises_conflict_error():
-    service = AdminService(repository=InMemoryAuthRepository())
+    service = _make_service()
 
     service.create_organization(name="Alpha", slug="alpha", actor_id="usr_admin_1")
     with pytest.raises(DuplicateOrganizationError):
@@ -26,7 +35,7 @@ def test_create_organization_duplicate_slug_raises_conflict_error():
 
 
 def test_invite_unknown_org_raises_not_found():
-    service = AdminService(repository=InMemoryAuthRepository())
+    service = _make_service()
 
     with pytest.raises(OrganizationNotFoundError):
         service.invite_user(
@@ -39,7 +48,7 @@ def test_invite_unknown_org_raises_not_found():
 
 
 def test_deactivate_then_activate_user_lifecycle():
-    service = AdminService(repository=InMemoryAuthRepository())
+    service = _make_service()
 
     deactivated = service.deactivate_user(user_id="usr_teacher_1", actor_id="usr_admin_1")
     assert deactivated.status == "deactivated"
@@ -49,14 +58,14 @@ def test_deactivate_then_activate_user_lifecycle():
 
 
 def test_invalid_transition_raises_error():
-    service = AdminService(repository=InMemoryAuthRepository())
+    service = _make_service()
 
     with pytest.raises(UserLifecycleError):
         service.activate_user(user_id="usr_teacher_1", actor_id="usr_admin_1")
 
 
 def test_accept_invitation_wrong_org_is_denied():
-    service = AdminService(repository=InMemoryAuthRepository())
+    service = _make_service()
     org = service.create_organization(name="Gamma", slug="gamma", actor_id="usr_admin_1")
     invite = service.invite_user(
         email="pending@example.com",
@@ -71,7 +80,7 @@ def test_accept_invitation_wrong_org_is_denied():
 
 
 def test_update_role_and_membership_persist_for_user():
-    service = AdminService(repository=InMemoryAuthRepository())
+    service = _make_service()
 
     role_updated = service.update_user_role(
         user_id="usr_teacher_1",
@@ -90,7 +99,7 @@ def test_update_role_and_membership_persist_for_user():
 
 
 def test_update_role_rejects_unsupported_role():
-    service = AdminService(repository=InMemoryAuthRepository())
+    service = _make_service()
     with pytest.raises(UserLifecycleError):
         service.update_user_role(
             user_id="usr_teacher_1",
@@ -100,7 +109,7 @@ def test_update_role_rejects_unsupported_role():
 
 
 def test_update_and_get_safety_controls_versions_and_normalization():
-    service = AdminService(repository=InMemoryAuthRepository())
+    service = _make_service()
 
     first = service.update_safety_controls(
         org_id="org_demo_1",
@@ -132,7 +141,7 @@ def test_update_and_get_safety_controls_versions_and_normalization():
 
 
 def test_update_safety_controls_rejects_invalid_or_noop_payloads():
-    service = AdminService(repository=InMemoryAuthRepository())
+    service = _make_service()
 
     with pytest.raises(SafetyControlsValidationError):
         service.update_safety_controls(

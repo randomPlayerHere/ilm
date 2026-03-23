@@ -37,4 +37,6 @@ export type {
   JoinCodeRequest,
   JoinCodeResponse,
   GuardianStudentLinkResponse,
+  LinkedChildResponse,
+  LinkedChildrenResponse,
 } from "./onboarding";
