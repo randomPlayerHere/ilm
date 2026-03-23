@@ -50,6 +50,7 @@ export default function StudentLayout() {
         name="settings"
         options={{ title: "Settings", tabBarAccessibilityLabel: "Settings tab", tabBarIcon: getTabBarIcon("student", "settings") }}
       />
+      <Tabs.Screen name="join" options={{ href: null }} />
     </Tabs>
   );
 }

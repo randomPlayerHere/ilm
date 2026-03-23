@@ -52,3 +52,35 @@ export interface CsvImportResponse {
   failed: number;
   results: CsvImportRowResult[];
 }
+
+export interface InviteLinkResponse {
+  invite_id: string;
+  token: string;
+  url: string;         // "ilm://invite/{token}"
+  student_id: string;
+  expires_at: string;
+}
+
+export interface InviteLinkResolveResponse {
+  valid: boolean;
+  reason: string | null;    // "already_used" | "expired" | null
+  student_name: string | null;
+  class_name: string | null;
+  subject: string | null;
+}
+
+export interface JoinCodeRequest {
+  join_code: string;
+}
+
+export interface JoinCodeResponse {
+  class_id: string;
+  class_name: string;
+  subject: string;
+}
+
+export interface GuardianStudentLinkResponse {
+  link_id: string;
+  student_id: string;
+  student_name: string;
+}

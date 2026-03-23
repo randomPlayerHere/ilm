@@ -32,4 +32,9 @@ export type {
   RosterResponse,
   CsvImportRowResult,
   CsvImportResponse,
+  InviteLinkResponse,
+  InviteLinkResolveResponse,
+  JoinCodeRequest,
+  JoinCodeResponse,
+  GuardianStudentLinkResponse,
 } from "./onboarding";

@@ -2,18 +2,24 @@ from __future__ import annotations
 
 import csv
 import io
+from datetime import UTC, datetime
 
-from app.domains.onboarding.models import ClassRecord, StudentRecord
+from app.domains.onboarding.models import ClassRecord, GuardianStudentLinkRecord, InviteLinkRecord, StudentRecord
 from app.domains.onboarding.repository import OnboardingRepository
 from app.domains.onboarding.schemas import (
     ClassResponse,
     CsvImportResponse,
     CsvImportRowResult,
+    GuardianStudentLinkResponse,
+    InviteLinkResolveResponse,
+    InviteLinkResponse,
+    JoinCodeResponse,
     RosterResponse,
     StudentResponse,
 )
 
 _MAX_CSV_ROWS = 200
+INVITE_URL_SCHEME = "ilm://invite/"
 
 
 class ClassNotFoundError(Exception):
@@ -29,6 +35,26 @@ class StudentNotFoundError(Exception):
 
 
 class StudentNotEnrolledError(Exception):
+    pass
+
+
+class InviteLinkNotFoundError(Exception):
+    pass
+
+
+class InviteLinkInvalidError(Exception):
+    pass
+
+
+class AlreadyLinkedError(Exception):
+    pass
+
+
+class InvalidJoinCodeError(Exception):
+    pass
+
+
+class AlreadyEnrolledError(Exception):
     pass
 
 
@@ -58,11 +84,11 @@ class OnboardingService:
             created_at=student.created_at,
         )
 
-    def _get_owned_class(self, class_id: str, actor_user_id: str) -> ClassRecord:
+    def _get_owned_class(self, class_id: str, actor_user_id: str, actor_org_id: str) -> ClassRecord:
         cls = self._repo.get_class(class_id)
         if cls is None:
             raise ClassNotFoundError(f"Class '{class_id}' not found.")
-        if cls.teacher_user_id != actor_user_id:
+        if cls.teacher_user_id != actor_user_id or cls.org_id != actor_org_id:
             raise ClassAccessError("You do not have permission to manage this class.")
         return cls
 
@@ -83,7 +109,7 @@ class OnboardingService:
         return [self._class_to_response(cls) for cls in classes]
 
     def get_roster(self, actor_user_id: str, actor_org_id: str, class_id: str) -> RosterResponse:
-        self._get_owned_class(class_id, actor_user_id)
+        self._get_owned_class(class_id, actor_user_id, actor_org_id)
         enrollments = self._repo.list_enrollments_for_class(class_id)
         students = []
         for enr in enrollments:
@@ -100,7 +126,7 @@ class OnboardingService:
         name: str,
         grade_level: str,
     ) -> StudentResponse:
-        self._get_owned_class(class_id, actor_user_id)
+        self._get_owned_class(class_id, actor_user_id, actor_org_id)
         student = self._repo.get_or_create_student(
             org_id=actor_org_id,
             name=name,
@@ -117,10 +143,11 @@ class OnboardingService:
     def remove_student(
         self,
         actor_user_id: str,
+        actor_org_id: str,
         class_id: str,
         student_id: str,
     ) -> None:
-        self._get_owned_class(class_id, actor_user_id)
+        self._get_owned_class(class_id, actor_user_id, actor_org_id)
         if not self._repo.is_enrolled(class_id, student_id):
             raise StudentNotEnrolledError(f"Student '{student_id}' is not enrolled in class '{class_id}'.")
         self._repo.unenroll_student(class_id, student_id)
@@ -132,7 +159,7 @@ class OnboardingService:
         class_id: str,
         csv_text: str,
     ) -> CsvImportResponse:
-        self._get_owned_class(class_id, actor_user_id)
+        self._get_owned_class(class_id, actor_user_id, actor_org_id)
 
         reader = csv.DictReader(io.StringIO(csv_text))
 
@@ -217,4 +244,121 @@ class OnboardingService:
             successful=successful,
             failed=failed,
             results=results,
+        )
+
+    def generate_invite_link(
+        self,
+        actor_user_id: str,
+        actor_org_id: str,
+        class_id: str,
+        student_id: str,
+    ) -> InviteLinkResponse:
+        cls = self._get_owned_class(class_id, actor_user_id, actor_org_id)
+        if not self._repo.is_enrolled(class_id, student_id):
+            raise StudentNotEnrolledError(f"Student '{student_id}' is not enrolled in class '{class_id}'.")
+        # Idempotent: return existing active invite if one exists
+        existing = self._repo.get_active_invite_link_for_student(class_id, student_id)
+        if existing is not None:
+            return InviteLinkResponse(
+                invite_id=existing.invite_id,
+                token=existing.token,
+                url=f"{INVITE_URL_SCHEME}{existing.token}",
+                student_id=existing.student_id,
+                expires_at=existing.expires_at,
+            )
+        invite = self._repo.create_invite_link(
+            org_id=actor_org_id,
+            class_id=class_id,
+            student_id=student_id,
+            generated_by=actor_user_id,
+        )
+        return InviteLinkResponse(
+            invite_id=invite.invite_id,
+            token=invite.token,
+            url=f"{INVITE_URL_SCHEME}{invite.token}",
+            student_id=invite.student_id,
+            expires_at=invite.expires_at,
+        )
+
+    def resolve_invite_link(self, token: str) -> InviteLinkResolveResponse:
+        invite = self._repo.get_invite_link(token)
+        if invite is None:
+            raise InviteLinkNotFoundError(f"Invite link '{token}' not found.")
+        now = datetime.now(UTC).isoformat()
+        if invite.used_at is not None:
+            return InviteLinkResolveResponse(
+                valid=False,
+                reason="already_used",
+                student_name=None,
+                class_name=None,
+                subject=None,
+            )
+        if invite.expires_at < now:
+            return InviteLinkResolveResponse(
+                valid=False,
+                reason="expired",
+                student_name=None,
+                class_name=None,
+                subject=None,
+            )
+        student = self._repo.get_student(invite.student_id)
+        cls = self._repo.get_class(invite.class_id)
+        return InviteLinkResolveResponse(
+            valid=True,
+            reason=None,
+            student_name=student.name if student else None,
+            class_name=cls.name if cls else None,
+            subject=cls.subject if cls else None,
+        )
+
+    def accept_invite_link(
+        self,
+        parent_user_id: str,
+        parent_org_id: str,
+        token: str,
+    ) -> GuardianStudentLinkResponse:
+        invite = self._repo.get_invite_link(token)
+        if invite is None:
+            raise InviteLinkInvalidError("Invite link not found or invalid.")
+        if invite.org_id != parent_org_id:
+            raise InviteLinkInvalidError("Invite link is not valid for this organization.")
+        now = datetime.now(UTC).isoformat()
+        if invite.used_at is not None or invite.expires_at < now:
+            raise InviteLinkInvalidError("Invite link is no longer valid.")
+        if self._repo.is_parent_linked_to_student(parent_user_id, invite.student_id):
+            raise AlreadyLinkedError("Already linked to this student.")
+        guardian_link = self._repo.accept_invite_link(
+            token=token,
+            parent_user_id=parent_user_id,
+            org_id=invite.org_id,
+        )
+        student = self._repo.get_student(invite.student_id)
+        return GuardianStudentLinkResponse(
+            link_id=guardian_link.link_id,
+            student_id=guardian_link.student_id,
+            student_name=student.name if student else "",
+        )
+
+    def join_by_code(
+        self,
+        student_user_id: str,
+        org_id: str,
+        join_code: str,
+    ) -> JoinCodeResponse:
+        cls = self._repo.find_class_by_join_code(join_code.upper(), org_id)
+        if cls is None:
+            raise InvalidJoinCodeError(f"Invalid or expired join code '{join_code}'.")
+        # Use auth user id directly for auth-user-linked students
+        student_id = student_user_id
+        if self._repo.is_enrolled(cls.class_id, student_id):
+            raise AlreadyEnrolledError("Already enrolled in this class.")
+        self._repo.join_class_by_code(
+            join_code=join_code.upper(),
+            student_user_id=student_user_id,
+            org_id=org_id,
+        )
+        return JoinCodeResponse(
+            class_id=cls.class_id,
+            class_name=cls.name,
+            subject=cls.subject,
         )

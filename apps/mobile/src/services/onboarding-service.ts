@@ -3,6 +3,8 @@ import type {
   ClassListResponse,
   ClassResponse,
   CsvImportResponse,
+  JoinCodeRequest,
+  JoinCodeResponse,
   RosterResponse,
   StudentCreateRequest,
   StudentResponse,
@@ -101,6 +103,38 @@ export async function removeStudent(
           throw new ClassAccessError("You don't have permission to manage this class.");
         case 404:
           throw new ClassNotFoundError("Class or student not found.");
+      }
+    }
+    throw error;
+  }
+}
+
+export class InvalidJoinCodeError extends Error {
+  name = "InvalidJoinCodeError" as const;
+}
+
+export class AlreadyEnrolledError extends Error {
+  name = "AlreadyEnrolledError" as const;
+}
+
+export async function joinClassByCode(
+  token: string,
+  joinCode: string,
+): Promise<JoinCodeResponse> {
+  const body: JoinCodeRequest = { join_code: joinCode.toUpperCase().trim() };
+  try {
+    return await apiRequest<JoinCodeResponse>("/onboarding/join", {
+      method: "POST",
+      body,
+      token,
+    });
+  } catch (error) {
+    if (error instanceof ApiError) {
+      switch (error.status) {
+        case 404:
+          throw new InvalidJoinCodeError("Invalid or expired join code.");
+        case 409:
+          throw new AlreadyEnrolledError("You are already enrolled in this class.");
       }
     }
     throw error;

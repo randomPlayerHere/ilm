@@ -22,6 +22,7 @@
     "@tamagui/config": "^1.114.0",
     "@tamagui/core": "^1.114.0",
     "expo": "~52.0.0",
+    "expo-clipboard": "^55.0.9",
     "expo-constants": "~17.0.0",
     "expo-dev-client": "^55.0.18",
     "expo-document-picker": "~13.0.3",

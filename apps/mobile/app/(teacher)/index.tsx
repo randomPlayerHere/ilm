@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
-import { FlatList } from "react-native";
+import { useCallback, useState } from "react";
+import { FlatList, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { YStack, XStack, Text, Button, Sheet, Input, Spinner } from "tamagui";
 import type { ClassResponse, ClassCreateRequest } from "@ilm/contracts";
@@ -33,9 +33,11 @@ export default function TeacherHome() {
     }
   }, [token]);
 
-  useEffect(() => {
-    fetchClasses();
-  }, [fetchClasses]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchClasses();
+    }, [fetchClasses]),
+  );
 
   const handleCreateClass = async () => {
     if (!token || !newName.trim() || !newSubject.trim()) return;
@@ -48,6 +50,7 @@ export default function TeacherHome() {
       setSheetOpen(false);
       setNewName("");
       setNewSubject("");
+      Alert.alert("Class Created!", `Join code: ${created.join_code}\n\nShare this code with students to join.`);
     } catch {
       setCreateError("Failed to create class. Please try again.");
     } finally {
@@ -64,7 +67,7 @@ export default function TeacherHome() {
       borderWidth={1}
       borderColor={colors.border}
       pressStyle={{ backgroundColor: colors.surfaceSecondary }}
-      onPress={() => router.push({ pathname: "/(teacher)/class/[classId]", params: { classId: item.class_id } })}
+      onPress={() => router.push({ pathname: "/(teacher)/class/[classId]", params: { classId: item.class_id, className: item.name } })}
     >
       <YStack flex={1} gap={4}>
         <Text fontSize={fontSizes.lg} fontWeight={fontWeights.bold} color={colors.textPrimary}>

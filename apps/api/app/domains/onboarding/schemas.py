@@ -59,3 +59,36 @@ class CsvImportResponse(BaseModel):
     successful: int
     failed: int
     results: list[CsvImportRowResult]
+
+
+class InviteLinkResponse(BaseModel):
+    invite_id: str
+    token: str
+    url: str          # "ilm://invite/{token}"
+    student_id: str
+    expires_at: str
+
+
+class InviteLinkResolveResponse(BaseModel):
+    valid: bool
+    reason: str | None  # "already_used" | "expired" | None (if valid=True)
+    student_name: str | None
+    class_name: str | None
+    subject: str | None
+
+
+class JoinCodeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    join_code: Annotated[str, StringConstraints(min_length=1, max_length=6, strip_whitespace=True)]
+
+
+class JoinCodeResponse(BaseModel):
+    class_id: str
+    class_name: str
+    subject: str
+
+
+class GuardianStudentLinkResponse(BaseModel):
+    link_id: str
+    student_id: str
+    student_name: str

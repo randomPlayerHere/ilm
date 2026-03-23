@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { FlatList, Alert } from "react-native";
+import { FlatList, Alert, Share } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
+import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { YStack, XStack, Text, Button, Sheet, Input, Spinner } from "tamagui";
 import type { StudentResponse, CsvImportResponse } from "@ilm/contracts";
@@ -14,6 +15,7 @@ import {
   removeStudent,
   importStudentsCsv,
 } from "../../../src/services/onboarding-service";
+import { generateInviteLink } from "../../../src/services/invite-service";
 
 export default function ClassRosterScreen() {
   const { classId, className } = useLocalSearchParams<{ classId: string; className?: string }>();
@@ -34,6 +36,15 @@ export default function ClassRosterScreen() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<CsvImportResponse | null>(null);
   const [importSheetOpen, setImportSheetOpen] = useState(false);
+
+  // Invite link sheet state
+  const [inviteSheet, setInviteSheet] = useState<{
+    studentId: string;
+    studentName: string;
+    url: string | null;
+    loading: boolean;
+    error: string | null;
+  } | null>(null);
 
   const fetchRoster = useCallback(async () => {
     if (!token || !classId) return;
@@ -118,6 +129,18 @@ export default function ClassRosterScreen() {
     }
   };
 
+  const handleGenerateInviteLink = async (studentId: string, studentName: string) => {
+    if (!token || !classId) return;
+    setInviteSheet({ studentId, studentName, url: null, loading: true, error: null });
+    try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const result = await generateInviteLink(token, classId, studentId);
+      setInviteSheet({ studentId, studentName, url: result.url, loading: false, error: null });
+    } catch {
+      setInviteSheet((prev) => prev ? { ...prev, loading: false, error: "Failed to generate invite link." } : null);
+    }
+  };
+
   const renderStudent = ({ item }: { item: StudentResponse }) => (
     <XStack
       alignItems="center"
@@ -135,6 +158,16 @@ export default function ClassRosterScreen() {
           {item.grade_level}
         </Text>
       </YStack>
+      <Button
+        size="$2"
+        backgroundColor="transparent"
+        color={colors.primary}
+        onPress={() => handleGenerateInviteLink(item.student_id, item.name)}
+        accessibilityLabel={`Generate parent invite link for ${item.name}`}
+        marginRight={spacing.sm}
+      >
+        Invite
+      </Button>
       <Button
         size="$2"
         backgroundColor="transparent"
@@ -318,6 +351,82 @@ export default function ClassRosterScreen() {
               </Button>
             </YStack>
           )}
+        </Sheet.Frame>
+      </Sheet>
+      {/* Invite Link Sheet */}
+      <Sheet
+        open={inviteSheet !== null}
+        onOpenChange={(open: boolean) => { if (!open) setInviteSheet(null); }}
+        snapPoints={[50]}
+        dismissOnSnapToBottom
+      >
+        <Sheet.Overlay />
+        <Sheet.Frame backgroundColor={colors.surface} padding={spacing.lg}>
+          <Sheet.Handle />
+          <YStack gap={spacing.md} paddingTop={spacing.md}>
+            <Text fontSize={fontSizes.lg} fontWeight={fontWeights.bold} color={colors.textPrimary}>
+              Invite Parent
+            </Text>
+            {inviteSheet && (
+              <>
+                <Text fontSize={fontSizes.md} color={colors.textTertiary}>
+                  Share with {inviteSheet.studentName}&apos;s parent
+                </Text>
+                {inviteSheet.loading ? (
+                  <YStack alignItems="center" paddingVertical={spacing.lg}>
+                    <Spinner size="large" color={colors.primary} />
+                  </YStack>
+                ) : inviteSheet.error ? (
+                  <Text color={colors.error} fontSize={fontSizes.sm}>{inviteSheet.error}</Text>
+                ) : inviteSheet.url ? (
+                  <>
+                    <Text
+                      fontSize={fontSizes.sm}
+                      color={colors.textPrimary}
+                      fontFamily="monospace"
+                      backgroundColor={colors.surfaceSecondary}
+                      padding={spacing.sm}
+                      borderRadius={4}
+                    >
+                      {inviteSheet.url}
+                    </Text>
+                    <XStack gap={spacing.sm}>
+                      <Button
+                        flex={1}
+                        backgroundColor={colors.surfaceSecondary}
+                        borderWidth={1}
+                        borderColor={colors.border}
+                        onPress={() => { if (inviteSheet.url) Clipboard.setStringAsync(inviteSheet.url); }}
+                        accessibilityLabel="Copy invite link"
+                      >
+                        Copy Link
+                      </Button>
+                      <Button
+                        flex={1}
+                        backgroundColor={colors.primary}
+                        color="#fff"
+                        onPress={() => {
+                          if (inviteSheet.url) {
+                            Share.share({ message: `Join ${inviteSheet.studentName} on ILM: ${inviteSheet.url}` });
+                          }
+                        }}
+                        accessibilityLabel="Share invite link"
+                      >
+                        Share
+                      </Button>
+                    </XStack>
+                  </>
+                ) : null}
+                <Button
+                  variant="outlined"
+                  borderColor={colors.border}
+                  onPress={() => setInviteSheet(null)}
+                >
+                  Done
+                </Button>
+              </>
+            )}
+          </YStack>
         </Sheet.Frame>
       </Sheet>
     </SafeAreaView>

@@ -1,6 +1,6 @@
 # Story 4.7: Teacher Class Setup and Student Management
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -38,42 +38,42 @@ So that I can set up my classroom and begin using the platform.
 
 ### Backend: New `onboarding` domain
 
-- [ ] Task 1: Create `apps/api/app/domains/onboarding/` domain (AC: #1, #2, #3, #4)
-  - [ ] Create `models.py` with `ClassRecord` and `StudentRecord` and `EnrollmentRecord` dataclasses
-  - [ ] Create `repository.py` with `OnboardingRepository` Protocol + `InMemoryOnboardingRepository` (follow InMemoryAuthRepository pattern with class-level dicts + seeded data)
-  - [ ] Create `schemas.py` with all Pydantic request/response models
-  - [ ] Create `service.py` with `OnboardingService` business logic
-  - [ ] Create `router.py` with FastAPI endpoints
-  - [ ] Create `__init__.py` (empty)
+- [x] Task 1: Create `apps/api/app/domains/onboarding/` domain (AC: #1, #2, #3, #4)
+  - [x] Create `models.py` with `ClassRecord` and `StudentRecord` and `EnrollmentRecord` dataclasses
+  - [x] Create `repository.py` with `OnboardingRepository` Protocol + `InMemoryOnboardingRepository` (follow InMemoryAuthRepository pattern with class-level dicts + seeded data)
+  - [x] Create `schemas.py` with all Pydantic request/response models
+  - [x] Create `service.py` with `OnboardingService` business logic
+  - [x] Create `router.py` with FastAPI endpoints
+  - [x] Create `__init__.py` (empty)
 
-- [ ] Task 2: Register onboarding router in `apps/api/app/main.py` (AC: all)
-  - [ ] Add `from app.domains.onboarding.router import router as onboarding_router`
-  - [ ] Add `app.include_router(onboarding_router)`
+- [x] Task 2: Register onboarding router in `apps/api/app/main.py` (AC: all)
+  - [x] Add `from app.domains.onboarding.router import router as onboarding_router`
+  - [x] Add `app.include_router(onboarding_router)`
 
 ### Contracts: New types
 
-- [ ] Task 3: Add class/student contract types in `packages/contracts/src/` (AC: all)
-  - [ ] Create `packages/contracts/src/onboarding.ts` with all interfaces
-  - [ ] Export from `packages/contracts/src/index.ts`
+- [x] Task 3: Add class/student contract types in `packages/contracts/src/` (AC: all)
+  - [x] Create `packages/contracts/src/onboarding.ts` with all interfaces
+  - [x] Export from `packages/contracts/src/index.ts`
 
 ### Mobile: Teacher home + class management UI
 
-- [ ] Task 4: Replace teacher home skeleton with class list (AC: #1, #4)
-  - [ ] Create `apps/mobile/src/services/onboarding-service.ts` with API call functions
-  - [ ] Update `apps/mobile/app/(teacher)/index.tsx` to show real class list
-  - [ ] Add "Create Class" flow (modal or stack screen)
-  - [ ] Display class cards with name, subject, student count, join code
+- [x] Task 4: Replace teacher home skeleton with class list (AC: #1, #4)
+  - [x] Create `apps/mobile/src/services/onboarding-service.ts` with API call functions
+  - [x] Update `apps/mobile/app/(teacher)/index.tsx` to show real class list
+  - [x] Add "Create Class" flow (modal or stack screen)
+  - [x] Display class cards with name, subject, student count, join code
 
-- [ ] Task 5: Class detail / roster screen (AC: #2, #3, #4)
-  - [ ] Create `apps/mobile/app/(teacher)/class/[classId].tsx` (or modal) for class roster
-  - [ ] Show enrolled student list (name, grade level)
-  - [ ] "Add Student" button → manual entry form
-  - [ ] "Import CSV" button → document picker → POST to backend → show import summary
-  - [ ] Remove student via swipe or button
+- [x] Task 5: Class detail / roster screen (AC: #2, #3, #4)
+  - [x] Create `apps/mobile/app/(teacher)/class/[classId].tsx` (or modal) for class roster
+  - [x] Show enrolled student list (name, grade level)
+  - [x] "Add Student" button → manual entry form
+  - [x] "Import CSV" button → document picker → POST to backend → show import summary
+  - [x] Remove student via swipe or button
 
-- [ ] Task 6: TypeScript verification (AC: all)
-  - [ ] Run `pnpm typecheck` from monorepo root — must pass with zero errors
-  - [ ] Verify `expo-document-picker` is available (included in Expo SDK 52)
+- [x] Task 6: TypeScript verification (AC: all)
+  - [x] Run `pnpm typecheck` from monorepo root — must pass with zero errors
+  - [x] Verify `expo-document-picker` is available (included in Expo SDK 52)
 
 ## Dev Notes
 
@@ -666,6 +666,51 @@ claude-sonnet-4-6
 
 ### Debug Log References
 
+### Code Review Fixes (claude-sonnet-4-6)
+
+- H1: Added `className: item.name` to class roster navigation params — header now shows actual class name instead of "Class Roster".
+- M1: Removed unused `import io` from `router.py`.
+- M2+M7: Added `actor_org_id` parameter to `_get_owned_class` with explicit org-scope check (`cls.org_id != actor_org_id`). Updated all callers to pass `actor_org_id`.
+- M3: Added `actor_org_id` to `remove_student` service method and router call for consistency with org-scope enforcement.
+- M3 (stale count): Replaced `useEffect` with `useFocusEffect` in teacher home — class list now refreshes on back-navigation from roster screen, keeping `student_count` accurate.
+- M4: Added `Alert.alert` after successful class creation to display the join code immediately.
+- M5: Added `test_csv_import_too_many_rows_returns_error_summary` test covering the 200-row limit.
+- M6: Made `_csv_upload` test helper `async def` with `await` — corrects the misleading sync wrapper pattern.
+
 ### Completion Notes List
 
+- Implemented full onboarding domain (models, repository, schemas, service, router) following InMemoryAuthRepository class-level dict pattern with `_seeded` guard and `reset_state()` for tests.
+- All 6 REST endpoints implemented under `/onboarding/*` prefix with teacher-role enforcement.
+- CSV import supports case-insensitive headers, BOM stripping (utf-8-sig), per-row error reporting, 200-row limit, and idempotent student creation (same name+grade_level reuses existing StudentRecord).
+- Teacher home replaced with FlatList of class cards (name, subject, student count, join code badge) + Tamagui Sheet create-class modal.
+- Class roster screen at `(teacher)/class/[classId].tsx` with add-student sheet, CSV document picker via `expo-document-picker`, import summary sheet, and remove-student confirmation dialog.
+- `expo-document-picker` added to `apps/mobile/package.json` (was not installed despite being in Expo SDK 52 — types were missing).
+- `API_BASE_URL` exported from `api-client.ts` for use in multipart form-data fetch in `onboarding-service.ts`.
+- Stack layout added at `(teacher)/class/_layout.tsx` to enable correct nested navigation within the Tabs group.
+- `pnpm typecheck` passes with zero errors across all packages.
+- 19 new backend API tests covering create/list/roster/add/remove/CSV-import scenarios; all pass. No regressions in existing test suite (pre-existing failures in `test_db_models` and 2 auth home-path assertions are unrelated to this story).
+
 ### File List
+
+**New files:**
+
+- `apps/api/app/domains/onboarding/__init__.py`
+- `apps/api/app/domains/onboarding/models.py`
+- `apps/api/app/domains/onboarding/repository.py`
+- `apps/api/app/domains/onboarding/schemas.py`
+- `apps/api/app/domains/onboarding/service.py`
+- `apps/api/app/domains/onboarding/router.py`
+- `packages/contracts/src/onboarding.ts`
+- `apps/mobile/src/services/onboarding-service.ts`
+- `apps/mobile/app/(teacher)/class/_layout.tsx`
+- `apps/mobile/app/(teacher)/class/[classId].tsx`
+- `apps/api/tests/test_onboarding_api.py`
+
+**Modified files:**
+
+- `apps/api/app/main.py`
+- `packages/contracts/src/index.ts`
+- `apps/mobile/app/(teacher)/index.tsx`
+- `apps/mobile/src/services/api-client.ts`
+- `apps/mobile/package.json`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
