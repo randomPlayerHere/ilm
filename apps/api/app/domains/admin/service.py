@@ -1,10 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from app.core.roles import is_supported_role
-from app.domains.auth.models import InvitationRecord, OrganizationRecord, SafetyControlsRecord, UserRecord
+from app.domains.auth.models import (
+    InvitationRecord,
+    OrganizationRecord,
+    SafetyControlsRecord,
+    UserRecord,
+)
 from app.domains.auth.repository import InMemoryAuthRepository
+from app.domains.onboarding.repository import InMemoryOnboardingRepository
 
 
 class DuplicateOrganizationError(Exception):
@@ -90,17 +97,61 @@ class SafetyControlsConfigured:
     updated_at: str
 
 
+class StudentNotFoundForConsentError(Exception):
+    pass
+
+
+class ConsentAlreadyConfirmedError(Exception):
+    pass
+
+
+@dataclass(frozen=True)
+class ConsentConfirmed:
+    student_id: str
+    org_id: str
+    consent_status: str  # "confirmed"
+    confirmed_by: str  # admin user_id
+    confirmed_at: str  # ISO 8601 UTC
+
+
+@dataclass(frozen=True)
+class StudentConsentSummary:
+    student_id: str
+    name: str
+    grade_level: str
+    consent_status: str  # "pending" | "confirmed" | "not_required"
+    org_id: str
+
+
+@dataclass(frozen=True)
+class StudentConsentRecord:
+    student_id: str
+    org_id: str
+    consent_status: str
+    confirmed_by: str | None
+    confirmed_at: str | None
+
+
 class AdminService:
     _SUPPORTED_MODERATION_MODES = {"balanced", "strict"}
     _SUPPORTED_AGE_SAFETY_LEVELS = {"standard", "enhanced"}
     _SUPPORTED_RESPONSE_TONES = {"neutral", "supportive", "strict"}
 
-    def __init__(self, repository: InMemoryAuthRepository) -> None:
+    def __init__(
+        self,
+        repository: InMemoryAuthRepository,
+        onboarding_repository: InMemoryOnboardingRepository,
+    ) -> None:
         self._repository = repository
+        self._onboarding_repository = onboarding_repository
 
-    def create_organization(self, name: str, slug: str, actor_id: str) -> OrganizationCreated:
+    def create_organization(
+        self, name: str, slug: str, actor_id: str
+    ) -> OrganizationCreated:
         try:
-            org: OrganizationRecord = self._repository.create_organization(name=name, slug=slug, actor_id=actor_id)
+            org: OrganizationRecord = self._repository.create_organization(
+                name=name, slug=slug, actor_id=actor_id
+            )
         except ValueError as exc:
             raise DuplicateOrganizationError(str(exc)) from exc
         return OrganizationCreated(org_id=org.org_id, name=org.name, slug=org.slug)
@@ -141,23 +192,35 @@ class AdminService:
         )
 
     def activate_user(self, user_id: str, actor_id: str) -> UserLifecycleUpdated:
-        return self._set_user_status(user_id=user_id, status="active", actor_id=actor_id)
+        return self._set_user_status(
+            user_id=user_id, status="active", actor_id=actor_id
+        )
 
     def deactivate_user(self, user_id: str, actor_id: str) -> UserLifecycleUpdated:
-        return self._set_user_status(user_id=user_id, status="deactivated", actor_id=actor_id)
+        return self._set_user_status(
+            user_id=user_id, status="deactivated", actor_id=actor_id
+        )
 
-    def accept_invitation(self, invitation_token: str, org_id: str) -> UserLifecycleUpdated:
+    def accept_invitation(
+        self, invitation_token: str, org_id: str
+    ) -> UserLifecycleUpdated:
         try:
-            user: UserRecord = self._repository.accept_invitation(invitation_token=invitation_token, org_id=org_id)
+            user: UserRecord = self._repository.accept_invitation(
+                invitation_token=invitation_token, org_id=org_id
+            )
         except KeyError as exc:
             raise InvitationError(str(exc)) from exc
         except PermissionError as exc:
             raise InvitationError(str(exc)) from exc
         except ValueError as exc:
             raise InvitationError(str(exc)) from exc
-        return UserLifecycleUpdated(user_id=user.user_id, status=user.status, org_id=user.org_id)
+        return UserLifecycleUpdated(
+            user_id=user.user_id, status=user.status, org_id=user.org_id
+        )
 
-    def update_user_role(self, user_id: str, role: str, actor_id: str) -> UserRoleUpdated:
+    def update_user_role(
+        self, user_id: str, role: str, actor_id: str
+    ) -> UserRoleUpdated:
         if not is_supported_role(role):
             raise UserLifecycleError("Unsupported role")
         try:
@@ -168,9 +231,13 @@ class AdminService:
             )
         except KeyError as exc:
             raise UserNotFoundError(str(exc)) from exc
-        return UserRoleUpdated(user_id=updated.user_id, role=updated.role, org_id=updated.org_id)
+        return UserRoleUpdated(
+            user_id=updated.user_id, role=updated.role, org_id=updated.org_id
+        )
 
-    def assign_user_membership(self, user_id: str, org_id: str, actor_id: str) -> UserLifecycleUpdated:
+    def assign_user_membership(
+        self, user_id: str, org_id: str, actor_id: str
+    ) -> UserLifecycleUpdated:
         try:
             updated = self._repository.assign_user_membership(
                 user_id=user_id,
@@ -182,7 +249,9 @@ class AdminService:
             if "Organization not found" in msg:
                 raise OrganizationNotFoundError(msg) from exc
             raise UserNotFoundError(msg) from exc
-        return UserLifecycleUpdated(user_id=updated.user_id, status=updated.status, org_id=updated.org_id)
+        return UserLifecycleUpdated(
+            user_id=updated.user_id, status=updated.status, org_id=updated.org_id
+        )
 
     def get_protected_org_summary(self, org_id: str) -> ProtectedOrganizationSummary:
         org = self._repository.get_organization(org_id)
@@ -221,7 +290,9 @@ class AdminService:
             age_safety_level=age_safety_level,
             max_response_tone=max_response_tone,
         ):
-            raise SafetyControlsValidationError("No changes detected in safety controls")
+            raise SafetyControlsValidationError(
+                "No changes detected in safety controls"
+            )
         try:
             updated = self._repository.update_safety_controls(
                 org_id=org_id,
@@ -235,7 +306,9 @@ class AdminService:
             raise OrganizationNotFoundError(str(exc)) from exc
         return self._as_safety_controls_configured(updated)
 
-    def get_safety_controls(self, org_id: str, actor_org_id: str) -> SafetyControlsConfigured:
+    def get_safety_controls(
+        self, org_id: str, actor_org_id: str
+    ) -> SafetyControlsConfigured:
         if actor_org_id != org_id:
             raise SafetyControlsAccessError("Forbidden")
         existing = self._repository.get_latest_safety_controls(org_id)
@@ -243,19 +316,98 @@ class AdminService:
             raise OrganizationNotFoundError("Safety controls not found")
         return self._as_safety_controls_configured(existing)
 
-    def _set_user_status(self, user_id: str, status: str, actor_id: str) -> UserLifecycleUpdated:
+    def confirm_consent(
+        self,
+        student_id: str,
+        admin_user_id: str,
+        org_id: str,
+    ) -> ConsentConfirmed:
+        student = self._onboarding_repository.get_student(student_id)
+        if student is None:
+            raise StudentNotFoundForConsentError(f"Student not found: {student_id}")
+        if student.org_id != org_id:
+            raise StudentNotFoundForConsentError(
+                "Student does not belong to this organization"
+            )
+        if student.consent_status in {"confirmed", "not_required"}:
+            raise ConsentAlreadyConfirmedError(
+                "Consent not required or already confirmed for this student"
+            )
+        confirmed_at = datetime.now(UTC).isoformat()
+        updated = self._onboarding_repository.confirm_student_consent(
+            student_id=student_id,
+            confirmed_by=admin_user_id,
+            confirmed_at=confirmed_at,
+        )
+        assert updated.consent_confirmed_by is not None
+        assert updated.consent_confirmed_at is not None
+        return ConsentConfirmed(
+            student_id=updated.student_id,
+            org_id=updated.org_id,
+            consent_status=updated.consent_status,
+            confirmed_by=updated.consent_confirmed_by,
+            confirmed_at=updated.consent_confirmed_at,
+        )
+
+    def list_students_pending_consent(self, org_id: str) -> list[StudentConsentSummary]:
+        students = self._onboarding_repository.list_students_for_org(org_id)
+        return [
+            StudentConsentSummary(
+                student_id=s.student_id,
+                name=s.name,
+                grade_level=s.grade_level,
+                consent_status=s.consent_status,
+                org_id=s.org_id,
+            )
+            for s in students
+            if s.consent_status == "pending"
+        ]
+
+    def get_student_consent_record(
+        self,
+        student_id: str,
+        org_id: str,
+    ) -> StudentConsentRecord:
+        student = self._onboarding_repository.get_student(student_id)
+        if student is None:
+            raise StudentNotFoundForConsentError(f"Student not found: {student_id}")
+        if student.org_id != org_id:
+            raise StudentNotFoundForConsentError(
+                "Student does not belong to this organization"
+            )
+        return StudentConsentRecord(
+            student_id=student.student_id,
+            org_id=student.org_id,
+            consent_status=student.consent_status,
+            confirmed_by=student.consent_confirmed_by,
+            confirmed_at=student.consent_confirmed_at,
+        )
+
+    def _set_user_status(
+        self, user_id: str, status: str, actor_id: str
+    ) -> UserLifecycleUpdated:
         try:
-            user = self._repository.set_user_status(user_id=user_id, status=status, actor_id=actor_id)
+            user = self._repository.set_user_status(
+                user_id=user_id, status=status, actor_id=actor_id
+            )
         except KeyError as exc:
             raise UserNotFoundError(str(exc)) from exc
         except ValueError as exc:
             raise InvalidLifecycleTransitionError(str(exc)) from exc
-        return UserLifecycleUpdated(user_id=user.user_id, status=user.status, org_id=user.org_id)
+        return UserLifecycleUpdated(
+            user_id=user.user_id, status=user.status, org_id=user.org_id
+        )
 
     def _normalize_categories(self, blocked_categories: list[str]) -> list[str]:
-        cleaned = [category.strip().lower() for category in blocked_categories if category.strip()]
+        cleaned = [
+            category.strip().lower()
+            for category in blocked_categories
+            if category.strip()
+        ]
         if not cleaned:
-            raise SafetyControlsValidationError("blocked_categories must contain at least one value")
+            raise SafetyControlsValidationError(
+                "blocked_categories must contain at least one value"
+            )
         return sorted(set(cleaned))
 
     def _is_noop(
@@ -273,7 +425,9 @@ class AdminService:
             and existing.max_response_tone == max_response_tone
         )
 
-    def _as_safety_controls_configured(self, record: SafetyControlsRecord) -> SafetyControlsConfigured:
+    def _as_safety_controls_configured(
+        self, record: SafetyControlsRecord
+    ) -> SafetyControlsConfigured:
         return SafetyControlsConfigured(
             org_id=record.org_id,
             version=record.version,

@@ -1,6 +1,6 @@
 # Story 4.8: Invite Links, Join Codes and Parent-Student Linking
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -40,103 +40,138 @@ So that parents are automatically connected to their child and students can join
 
 ### PREREQUISITE CHECK
 
-- [ ] Task 0: Verify Story 4.7 is fully implemented before starting 4.8 (AC: all)
-  - [ ] Confirm `apps/api/app/domains/onboarding/` exists with models.py, repository.py, service.py, router.py, schemas.py
-  - [ ] Confirm `OnboardingRepository` protocol + `InMemoryOnboardingRepository` is complete
-  - [ ] Confirm `ClassRecord`, `StudentRecord`, `EnrollmentRecord` dataclasses exist
-  - [ ] Confirm `apps/mobile/app/(teacher)/class/[classId].tsx` exists (the roster screen 4.8 will extend)
-  - [ ] Confirm `packages/contracts/src/onboarding.ts` exists with class/student types
+- [x] Task 0: Verify Story 4.7 is fully implemented before starting 4.8 (AC: all)
+  - [x] Confirm `apps/api/app/domains/onboarding/` exists with models.py, repository.py, service.py, router.py, schemas.py
+  - [x] Confirm `OnboardingRepository` protocol + `InMemoryOnboardingRepository` is complete
+  - [x] Confirm `ClassRecord`, `StudentRecord`, `EnrollmentRecord` dataclasses exist
+  - [x] Confirm `apps/mobile/app/(teacher)/class/[classId].tsx` exists (the roster screen 4.8 will extend)
+  - [x] Confirm `packages/contracts/src/onboarding.ts` exists with class/student types
   - **If any of the above don't exist: STOP and implement Story 4.7 first**
 
 ### Backend: Extend `onboarding` domain with invite links and join codes
 
-- [ ] Task 1: Add new models to `apps/api/app/domains/onboarding/models.py` (AC: #1, #2, #3, #4)
-  - [ ] Add `InviteLinkRecord` dataclass (see Data Model section)
-  - [ ] Add `GuardianStudentLinkRecord` dataclass (see Data Model section)
+- [x] Task 1: Add new models to `apps/api/app/domains/onboarding/models.py` (AC: #1, #2, #3, #4)
+  - [x] Add `InviteLinkRecord` dataclass (see Data Model section)
+  - [x] Add `GuardianStudentLinkRecord` dataclass (see Data Model section)
 
-- [ ] Task 2: Extend `InMemoryOnboardingRepository` in `apps/api/app/domains/onboarding/repository.py` (AC: all)
-  - [ ] Add `_invite_links: dict[str, InviteLinkRecord] = {}` class-level dict
-  - [ ] Add `_guardian_links: list[GuardianStudentLinkRecord] = []` class-level list
-  - [ ] Add `_invite_seq: int = 0` class-level counter
-  - [ ] Add `_guardian_link_seq: int = 0` class-level counter
-  - [ ] Add `create_invite_link(org_id, class_id, student_id, generated_by) -> InviteLinkRecord` method
-  - [ ] Add `get_invite_link(token) -> InviteLinkRecord | None` method
-  - [ ] Add `accept_invite_link(token, parent_user_id) -> GuardianStudentLinkRecord` method (mark used_at, create link)
-  - [ ] Add `get_guardian_links_for_parent(parent_user_id) -> list[GuardianStudentLinkRecord]` method
-  - [ ] Add `join_class_by_code(join_code, student_user_id, org_id) -> EnrollmentRecord` method
-  - [ ] Update `reset_state()` to also reset invite/guardian state
-  - [ ] Add seed data: one pre-generated invite link for `stu_1` / `cls_1` (token: `inv_demo_abc123`) for testing
+- [x] Task 2: Extend `InMemoryOnboardingRepository` in `apps/api/app/domains/onboarding/repository.py` (AC: all)
+  - [x] Add `_invite_links: dict[str, InviteLinkRecord] = {}` class-level dict
+  - [x] Add `_guardian_links: list[GuardianStudentLinkRecord] = []` class-level list
+  - [x] Add `_invite_seq: int = 0` class-level counter
+  - [x] Add `_guardian_link_seq: int = 0` class-level counter
+  - [x] Add `create_invite_link(org_id, class_id, student_id, generated_by) -> InviteLinkRecord` method
+  - [x] Add `get_invite_link(token) -> InviteLinkRecord | None` method
+  - [x] Add `accept_invite_link(token, parent_user_id) -> GuardianStudentLinkRecord` method (mark used_at, create link)
+  - [x] Add `get_guardian_links_for_parent(parent_user_id) -> list[GuardianStudentLinkRecord]` method
+  - [x] Add `join_class_by_code(join_code, student_user_id, org_id) -> EnrollmentRecord` method
+  - [x] Update `reset_state()` to also reset invite/guardian state
+  - [x] Add seed data: one pre-generated invite link for `stu_1` / `cls_1` (token: `inv_demo_abc123`) for testing
 
-- [ ] Task 3: Add Pydantic schemas to `apps/api/app/domains/onboarding/schemas.py` (AC: all)
-  - [ ] `InviteLinkResponse` schema
-  - [ ] `InviteLinkResolveResponse` schema (student preview for deep link landing page)
-  - [ ] `JoinCodeRequest` schema
-  - [ ] `JoinCodeResponse` schema
-  - [ ] `GuardianStudentLinkResponse` schema
+- [x] Task 3: Add Pydantic schemas to `apps/api/app/domains/onboarding/schemas.py` (AC: all)
+  - [x] `InviteLinkResponse` schema
+  - [x] `InviteLinkResolveResponse` schema (student preview for deep link landing page)
+  - [x] `JoinCodeRequest` schema
+  - [x] `JoinCodeResponse` schema
+  - [x] `GuardianStudentLinkResponse` schema
 
-- [ ] Task 4: Add invite/join endpoints to `apps/api/app/domains/onboarding/router.py` (AC: all)
-  - [ ] `POST /onboarding/classes/{class_id}/students/{student_id}/invite-link` → generate invite link (teacher only)
-  - [ ] `GET /onboarding/invite/{token}` → resolve invite (public: no auth required — parent clicks link before signing in)
-  - [ ] `POST /onboarding/invite/{token}/accept` → accept invite (parent role required, authenticated)
-  - [ ] `POST /onboarding/join` → student enters join code → enrolled in class (student role required)
+- [x] Task 4: Add invite/join endpoints to `apps/api/app/domains/onboarding/router.py` (AC: all)
+  - [x] `POST /onboarding/classes/{class_id}/students/{student_id}/invite-link` → generate invite link (teacher only)
+  - [x] `GET /onboarding/invite/{token}` → resolve invite (public: no auth required — parent clicks link before signing in)
+  - [x] `POST /onboarding/invite/{token}/accept` → accept invite (parent role required, authenticated)
+  - [x] `POST /onboarding/join` → student enters join code → enrolled in class (student role required)
 
-- [ ] Task 5: Add service business logic to `apps/api/app/domains/onboarding/service.py` (AC: all)
-  - [ ] `generate_invite_link(actor, class_id, student_id) -> InviteLinkRecord` — teacher-only
-  - [ ] `resolve_invite_link(token) -> InviteLinkResolveResponse` — returns student/class info for preview
-  - [ ] `accept_invite_link(actor, token) -> GuardianStudentLinkRecord` — parent-only, marks used_at
-  - [ ] `join_by_code(actor, join_code) -> EnrollmentRecord` — student-only
+- [x] Task 5: Add service business logic to `apps/api/app/domains/onboarding/service.py` (AC: all)
+  - [x] `generate_invite_link(actor, class_id, student_id) -> InviteLinkRecord` — teacher-only
+  - [x] `resolve_invite_link(token) -> InviteLinkResolveResponse` — returns student/class info for preview
+  - [x] `accept_invite_link(actor, token) -> GuardianStudentLinkRecord` — parent-only, marks used_at
+  - [x] `join_by_code(actor, join_code) -> EnrollmentRecord` — student-only
 
 ### Contracts: New TypeScript types
 
-- [ ] Task 6: Add invite/join types to `packages/contracts/src/onboarding.ts` (AC: all)
-  - [ ] `InviteLinkResponse`, `InviteLinkResolveResponse`, `JoinCodeRequest`, `JoinCodeResponse` interfaces
-  - [ ] Export all new types from `packages/contracts/src/index.ts`
+- [x] Task 6: Add invite/join types to `packages/contracts/src/onboarding.ts` (AC: all)
+  - [x] `InviteLinkResponse`, `InviteLinkResolveResponse`, `JoinCodeRequest`, `JoinCodeResponse` interfaces
+  - [x] Export all new types from `packages/contracts/src/index.ts`
 
 ### Mobile: Teacher roster extension (add invite link generation)
 
-- [ ] Task 7: Extend `apps/mobile/app/(teacher)/class/[classId].tsx` (AC: #1)
-  - [ ] Add "Generate Invite Link" button/icon next to each student row in the roster list
-  - [ ] On tap: call `POST /onboarding/classes/{classId}/students/{studentId}/invite-link`
-  - [ ] On success: show bottom sheet with:
+- [x] Task 7: Extend `apps/mobile/app/(teacher)/class/[classId].tsx` (AC: #1)
+  - [x] Add "Generate Invite Link" button/icon next to each student row in the roster list
+  - [x] On tap: call `POST /onboarding/classes/{classId}/students/{studentId}/invite-link`
+  - [x] On success: show bottom sheet with:
     - The invite URL (displayed in monospace text)
     - "Copy Link" button → `Clipboard.setStringAsync(url)` from `expo-clipboard`
     - "Share" button → `Share.share({ message: url })` from React Native's `Share` API
-  - [ ] Show activity indicator while generating; show error toast if generation fails
+  - [x] Show activity indicator while generating; show error toast if generation fails
 
-- [ ] Task 8: Create `apps/mobile/src/services/invite-service.ts` (AC: #1, #2, #4)
-  - [ ] `generateInviteLink(token, classId, studentId): Promise<InviteLinkResponse>`
-  - [ ] `resolveInviteLink(token): Promise<InviteLinkResolveResponse>` (no auth token needed)
-  - [ ] `acceptInviteLink(authToken, inviteToken): Promise<void>`
+- [x] Task 8: Create `apps/mobile/src/services/invite-service.ts` (AC: #1, #2, #4)
+  - [x] `generateInviteLink(token, classId, studentId): Promise<InviteLinkResponse>`
+  - [x] `resolveInviteLink(token): Promise<InviteLinkResolveResponse>` (no auth token needed)
+  - [x] `acceptInviteLink(authToken, inviteToken): Promise<void>`
 
 ### Mobile: Student join code screen
 
-- [ ] Task 9: Create `apps/mobile/app/(student)/join.tsx` (AC: #3)
-  - [ ] Text input for join code entry (uppercase, max 6 chars, auto-uppercase transform)
-  - [ ] "Join Class" button → calls `POST /onboarding/join` with the code
-  - [ ] On success: navigate to student home, show confirmation toast
-  - [ ] On 404: "Invalid or expired join code" error message
-  - [ ] On 409: "You are already enrolled in this class" message
-  - [ ] Add "Join a Class" entry point in `apps/mobile/app/(student)/index.tsx` (e.g., a "+" button or empty state CTA) — keep it minimal; just a navigation link to join.tsx
+- [x] Task 9: Create `apps/mobile/app/(student)/join.tsx` (AC: #3)
+  - [x] Text input for join code entry (uppercase, max 6 chars, auto-uppercase transform)
+  - [x] "Join Class" button → calls `POST /onboarding/join` with the code
+  - [x] On success: use `router.replace("/(student)")` — NOT `router.back()` (no guaranteed back stack)
+  - [x] On 404: "Invalid or expired join code" error message
+  - [x] On 409: "You are already enrolled in this class" message
+  - [x] Add "Join a Class" entry point in `apps/mobile/app/(student)/index.tsx` (e.g., a "+" button or empty state CTA) — keep it minimal; just a navigation link to join.tsx
 
-- [ ] Task 10: Add `joinClass` to `apps/mobile/src/services/onboarding-service.ts` (AC: #3)
-  - [ ] `joinClassByCode(token, joinCode): Promise<JoinCodeResponse>`
+- [x] Task 9b: Hide `join` from student tab bar in `apps/mobile/app/(student)/_layout.tsx` (AC: #3)
+  - **CRITICAL:** `(student)/_layout.tsx` uses `<Tabs>` — any file in that directory auto-appears as a tab
+  - [x] Add `<Tabs.Screen name="join" options={{ href: null }} />` inside the `<Tabs>` block
+  - [x] This prevents a "Join" tab from appearing in the student bottom navigation bar
+  - See Dev Notes for complete example
+
+- [x] Task 10: Add `joinClass` to `apps/mobile/src/services/onboarding-service.ts` (AC: #3)
+  - [x] `joinClassByCode(token, joinCode): Promise<JoinCodeResponse>`
 
 ### Mobile: Deep link handling for invite flow
 
-- [ ] Task 11: Configure deep link scheme in `apps/mobile/app.json` (AC: #2)
-  - [ ] Add `scheme: "ilm"` under `expo` config (required for `ilm://` deep links to open the app)
-  - [ ] Add `intentFilters` for Android and `associatedDomains` placeholder for iOS (see Dev Notes)
+- [x] Task 11: Configure deep link scheme in `apps/mobile/app.json` (AC: #2)
+  - **⚠️ SCHEME CONFLICT — READ BEFORE ACTING:** `app.json` currently has `"scheme": "teacheros"` (set in Story 4.4). The invite URLs in this story use `ilm://invite/{token}`. You must resolve this before proceeding — see Dev Notes: Deep Link Scheme Decision.
+  - [x] Add `intentFilters` for Android and `associatedDomains` placeholder for iOS (see Dev Notes)
 
-- [ ] Task 12: Handle invite deep link in `apps/mobile/app/_layout.tsx` (AC: #2, #4)
-  - [ ] Add `Linking.addEventListener("url", handleDeepLink)` in `RootLayout` effect
-  - [ ] Parse `ilm://invite/{token}` pattern from incoming URL
-  - [ ] If authenticated as parent: call `acceptInviteLink(token)` and navigate to `/(parent)` on success
-  - [ ] If NOT authenticated: store token in module-level variable or context, redirect to `/auth`
-  - [ ] In `AuthGuard`, after successful authentication as parent, check for pending invite token → auto-accept → navigate to parent home
-  - [ ] See Dev Notes for complete implementation pattern
+- [x] Task 12: Handle invite deep link in `apps/mobile/app/_layout.tsx` (AC: #2, #4)
+  - [x] **First: update `AuthGuard` destructuring** — add `role` and `token` to `const { isLoading, isAuthenticated, homePath } = useAuth()` (currently missing these)
+  - [x] Add `Linking.addEventListener("url", handleDeepLink)` in `RootLayout` effect
+  - [x] Parse deep link URL using the scheme decided in Task 11 (either `ilm://invite/` or `teacheros://invite/`)
+  - [x] If authenticated as parent: call `acceptInviteLink(token)` and navigate to `/(parent)` on success
+  - [x] If NOT authenticated: store token in module-level variable or context, redirect to `/auth`
+  - [x] In `AuthGuard`, **modify the existing useEffect** (add pending invite check into it, do NOT add a second useEffect)
+  - [x] Add `useRef(false)` guard so `Linking.getInitialURL()` only fires once on mount, not on every auth state change
+  - [x] See Dev Notes for complete implementation pattern
 
-- [ ] Task 13: TypeScript verification (AC: all)
-  - [ ] Run `pnpm typecheck` from monorepo root — must pass with zero errors
+- [x] Task 13: TypeScript verification (AC: all)
+  - [x] Run `pnpm typecheck` from monorepo root — must pass with zero errors
+
+- [x] Task 14: Backend API tests for new endpoints (AC: all)
+  - [x] Extend `apps/api/tests/test_onboarding_api.py` with tests covering:
+    - [x] `POST .../invite-link` — teacher generates link for enrolled student → 200 with token/url
+    - [x] `POST .../invite-link` — idempotent: second call for same student returns existing active link
+    - [x] `POST .../invite-link` — teacher doesn't own class → 403
+    - [x] `GET /onboarding/invite/{token}` — valid unused link → valid=True, student/class name returned
+    - [x] `GET /onboarding/invite/{token}` — already used link → valid=False, reason="already_used"
+    - [x] `GET /onboarding/invite/{token}` — unknown token → 404
+    - [x] `POST /onboarding/invite/{token}/accept` — parent accepts valid link → 200, guardian link created
+    - [x] `POST /onboarding/invite/{token}/accept` — parent re-accepts already used link → 400
+    - [x] `POST /onboarding/invite/{token}/accept` — parent already linked to student → 409
+    - [x] `POST /onboarding/invite/{token}/accept` — non-parent role → 403
+    - [x] `POST /onboarding/join` — valid join code → 200, enrollment created
+    - [x] `POST /onboarding/join` — invalid code → 404
+    - [x] `POST /onboarding/join` — student already enrolled → 409
+    - [x] `POST /onboarding/join` — non-student role → 403
+  - [x] All existing tests must continue passing (no regressions in test_onboarding_api.py)
+
+### Review Follow-ups (AI)
+
+- [x] [AI-Review][High] Enforce org consistency when accepting invite links to prevent cross-tenant linking via token reuse ([apps/api/app/domains/onboarding/service.py]).
+- [x] [AI-Review][High] Surface explicit user messaging for invite states (already used / expired) in deep-link acceptance flow instead of silent catch ([apps/mobile/app/_layout.tsx], AC #4).
+- [x] [AI-Review][High] Fix student join identity mapping to avoid double-prefixed IDs (`usr_usr_*`) and align enrollment linkage with auth user IDs ([apps/api/app/domains/onboarding/service.py], [apps/api/app/domains/onboarding/repository.py]).
+- [x] [AI-Review][Medium] Align join-code length constraints between story/task claim (max 6) and implementation/schema ([apps/mobile/app/(student)/join.tsx], [apps/api/app/domains/onboarding/schemas.py]).
+- [x] [AI-Review][Medium] Reconcile story File List with actual modified source files; include omitted app file changes ([apps/mobile/app/(teacher)/index.tsx]).
+- [x] [AI-Review][Low] Remove or map unused invite error type (`InviteLinkAlreadyUsedError`) to avoid dead-path client handling ([apps/mobile/src/services/invite-service.ts]).
 
 ## Dev Notes
 
@@ -381,10 +416,13 @@ export interface GuardianStudentLinkResponse {
 }
 ```
 
-Export from `packages/contracts/src/index.ts`:
+Add to the **existing** export block in `packages/contracts/src/index.ts` (do not create a second block — append to the existing `from "./onboarding"` export):
 ```typescript
+// Existing line — extend it to include the 5 new types:
 export type {
-  // ... existing exports ...
+  ClassCreateRequest, ClassResponse, ClassListResponse,
+  StudentCreateRequest, StudentResponse, RosterResponse,
+  CsvImportRowResult, CsvImportResponse,
   InviteLinkResponse, InviteLinkResolveResponse,
   JoinCodeRequest, JoinCodeResponse,
   GuardianStudentLinkResponse,
@@ -487,9 +525,33 @@ export async function joinClassByCode(
 
 ### Mobile: Deep Link Configuration and Handling
 
+#### ⚠️ STEP 0 (CRITICAL): Deep Link Scheme Decision
+
+The current `apps/mobile/app.json` (line 38) already contains:
+```json
+"scheme": "teacheros"
+```
+
+This was set during Story 4.4 and is the registered deep link scheme for the app. This story uses `ilm://invite/{token}` throughout, which **conflicts** with the existing scheme. You must choose **one of these options** before writing any code:
+
+**Option A — Change scheme to `ilm` (recommended if brand alignment is desired):**
+- Replace `"scheme": "teacheros"` with `"scheme": "ilm"` in `app.json`
+- Update `INVITE_URL_SCHEME` to `"ilm://invite/"` (already correct in story)
+- Note: This changes the app's deep link identity — coordinate if Universal Links / App Store submission is planned
+
+**Option B — Keep `teacheros` scheme:**
+- Leave `app.json` unchanged (`"scheme": "teacheros"` stays)
+- Change `INVITE_URL_SCHEME = "teacheros://invite/"` in the backend service
+- Update all URL regex patterns in the deep link handler to `^teacheros:\/\/invite\/(.+)$`
+- Update the `data` filter in `intentFilters` to use `"scheme": "teacheros"`
+
+**Pick one option and apply it consistently across all files.** The tasks and code below use `ilm://` (Option A) — adjust if you choose Option B.
+
+---
+
 **Step 1: Configure scheme in `apps/mobile/app.json`**
 
-Add to the `expo` config object:
+Add/update the `expo` config object (using Option A):
 ```json
 {
   "expo": {
@@ -508,11 +570,19 @@ Add to the `expo` config object:
 }
 ```
 
+---
+
 **Step 2: Handle deep links in `apps/mobile/app/_layout.tsx`**
+
+**Delta from current `_layout.tsx`:**
+1. `AuthGuard` currently destructures `{ isLoading, isAuthenticated, homePath }` — **update to add `role` and `token`**
+2. The existing `useEffect` (auth guard logic) must be **modified** to add the pending invite check — do NOT add a second `useEffect`
+3. Add a `useRef(false)` guard so `Linking.getInitialURL()` only fires once on mount
 
 ```typescript
 import { useEffect, useRef } from "react";
 import { Linking } from "react-native";
+import { acceptInviteLink } from "../src/services/invite-service";
 
 // Module-level pending token (survives navigation during auth flow)
 let pendingInviteToken: string | null = null;
@@ -520,51 +590,62 @@ let pendingInviteToken: string | null = null;
 export function getPendingInviteToken(): string | null { return pendingInviteToken; }
 export function clearPendingInviteToken(): void { pendingInviteToken = null; }
 
-// In AuthGuard component, after useAuth():
+// In AuthGuard component — update existing destructuring:
 const router = useRouter();
-const { isAuthenticated, isLoading, role, token, homePath } = useAuth();
+const { isAuthenticated, isLoading, role, token, homePath } = useAuth();  // ADD role, token
+const initialUrlHandled = useRef(false);  // ADD: prevent double-processing
 
-// Handle deep links
+// ADD: deep link listener (separate useEffect, only for the listener itself)
 useEffect(() => {
   function handleUrl({ url }: { url: string }) {
     const match = url.match(/^ilm:\/\/invite\/(.+)$/);
     if (!match) return;
     const inviteToken = match[1];
     if (isAuthenticated && role === "parent" && token) {
-      // Already signed in as parent — accept immediately
       acceptInviteLink(token, inviteToken)
         .then(() => router.replace("/(parent)"))
         .catch(() => { /* show error toast */ });
     } else {
-      // Store and redirect to auth
       pendingInviteToken = inviteToken;
       router.replace("/auth");
     }
   }
   const sub = Linking.addEventListener("url", handleUrl);
-  // Check initial URL (app launched from cold via deep link)
-  Linking.getInitialURL().then((url) => { if (url) handleUrl({ url }); });
+  // Check initial URL only once (cold start via deep link)
+  if (!initialUrlHandled.current) {
+    initialUrlHandled.current = true;
+    Linking.getInitialURL().then((url) => { if (url) handleUrl({ url }); });
+  }
   return () => sub.remove();
 }, [isAuthenticated, role, token, router]);
 
-// After successful sign-in as parent, check for pending token in AuthGuard's existing useEffect:
+// MODIFY existing useEffect (auth guard) — add pending invite check at the top:
 useEffect(() => {
   if (isLoading) return;
+
+  // Handle pending invite token (parent just signed in after tapping invite link)
   if (isAuthenticated && role === "parent" && token && pendingInviteToken) {
     const inviteToken = pendingInviteToken;
     clearPendingInviteToken();
     acceptInviteLink(token, inviteToken)
       .then(() => router.replace("/(parent)"))
-      .catch(() => router.replace(homePath as string));
+      .catch(() => router.replace(homePath as Parameters<typeof router.replace>[0]));
     return;
   }
-  // ... existing auth guard logic ...
-}, [isAuthenticated, isLoading, role, token, homePath, router]);
+
+  // ... existing auth guard logic unchanged below ...
+  const inAuthGroup = segments[0] === "auth";
+  if (!isAuthenticated && !inAuthGroup) {
+    router.replace("/auth");
+  } else if (isAuthenticated && inAuthGroup && homePath) {
+    router.replace(homePath as Parameters<typeof router.replace>[0]);
+  }
+}, [isAuthenticated, isLoading, role, token, homePath, segments, router]);
 ```
 
-**Note:** The `acceptInviteLink` import in `_layout.tsx` must come from `invite-service.ts`. Be careful not to create circular imports.
+**Note:** The `acceptInviteLink` import in `_layout.tsx` must come from `invite-service.ts`. Import direction is `_layout.tsx` → `invite-service.ts` (one way only — no risk of circular imports).
 
-**In-Memory Limitation Note:** Deep links require a real device or a device with the `ilm://` scheme registered. In Expo Go, custom schemes work. The invite link URL `ilm://invite/{token}` can be pasted into the address bar of Expo Go's URL bar for testing on simulator.
+**In-Memory Limitation Note:** Deep links require the app to be registered with the scheme. In Expo Go, custom schemes work. The invite link URL (`ilm://invite/{token}` or `teacheros://invite/{token}`) can be pasted into the Expo Go URL bar on simulator for testing.
 
 ### Mobile: Teacher Roster — Add Invite Link UI
 
@@ -597,7 +678,17 @@ const [inviteSheet, setInviteSheet] = useState<{
 } | null>(null);
 ```
 
-**`expo-clipboard` availability:** Part of Expo SDK 52, no installation needed. Import directly.
+**`expo-clipboard` availability — VERIFY BEFORE USE:**
+Story 4.7 discovered that `expo-document-picker` was NOT installed despite being bundled with Expo SDK 52 (types were missing, causing `pnpm typecheck` failures). The same risk applies here.
+
+Check if `expo-clipboard` is in `apps/mobile/package.json`. If not, add it:
+
+```bash
+# From apps/mobile/
+pnpm add expo-clipboard
+```
+
+Then import directly:
 
 ### Mobile: Student Join Code Screen
 
@@ -625,8 +716,8 @@ export default function JoinClassScreen() {
     setError(null);
     try {
       const result = await joinClassByCode(token, code);
-      // Success: navigate back and show confirmation
-      router.back();
+      // Success: navigate to student home (router.back() is unsafe — no guaranteed back stack)
+      router.replace("/(student)");
       // Optional: show toast (if a toast system exists — check Story 4.7 patterns first)
     } catch (err) {
       if (err instanceof InvalidJoinCodeError) {
@@ -678,6 +769,18 @@ export default function JoinClassScreen() {
   );
 }
 ```
+
+**⚠️ CRITICAL: Hide `join.tsx` from the student tab bar**
+
+The `(student)/_layout.tsx` uses `<Tabs>` navigator. Expo Router **automatically adds every file in the directory as a tab screen**. Creating `join.tsx` will add an unwanted "Join" tab to the student navigation bar. You MUST add this to `apps/mobile/app/(student)/_layout.tsx` inside the `<Tabs>` block:
+
+```tsx
+<Tabs.Screen name="join" options={{ href: null }} />
+```
+
+`href: null` removes the screen from the tab bar while keeping the route accessible via `router.push("/(student)/join")`. Add it after the existing 4 `<Tabs.Screen>` entries.
+
+---
 
 **Student home: Add "Join a Class" entry point in `apps/mobile/app/(student)/index.tsx`:**
 
@@ -835,6 +938,15 @@ apps/mobile/app.json                              # ADD: scheme + intentFilters
 - [Source: apps/mobile/app/(teacher)/class/[classId].tsx] — Teacher roster screen from Story 4.7 (add invite link UI to this file)
 - [Source: apps/mobile/app/(student)/index.tsx] — Student home screen (add "Join a Class" CTA)
 
+## Senior Developer Review (AI)
+
+- Reviewer: elephant
+- Date: 2026-03-23
+- Outcome: Approved after fixes
+- Summary: 3 High and 2 Medium findings fixed in code and validated. 34 onboarding API tests pass and mobile typecheck passes.
+- Issues Fixed: 5 (High/Medium)
+- Action Items Created: 0
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -843,6 +955,51 @@ claude-sonnet-4-6
 
 ### Debug Log References
 
+- expo-clipboard was not installed despite Expo SDK 52 bundle claim (same as expo-document-picker in 4.7). Added via `pnpm add expo-clipboard` in apps/mobile.
+- `usr_parent_2` does not exist in InMemoryAuthRepository seed — `require_authenticated_actor` returns 403 for unregistered users even with valid JWT. Test for "already_used → 400" uses same parent (usr_parent_1) since `used_at` check fires before the linked check.
+- Deep link scheme changed from `teacheros` to `ilm` (Option A) per story recommendation.
+
 ### Completion Notes List
 
+- Implemented InviteLinkRecord and GuardianStudentLinkRecord models in models.py
+- Extended InMemoryOnboardingRepository with invite link and guardian link CRUD, class join-by-code, and seed data (inv_demo_abc123 for stu_1/cls_1)
+- Added 5 new Pydantic schemas to schemas.py; 4 new API endpoints to router.py; 4 new service methods to service.py
+- Added 5 TypeScript interfaces to contracts/onboarding.ts and updated index.ts exports
+- Created apps/mobile/src/services/invite-service.ts with generateInviteLink, resolveInviteLink, acceptInviteLink
+- Extended onboarding-service.ts with joinClassByCode, InvalidJoinCodeError, AlreadyEnrolledError
+- Extended teacher roster [classId].tsx with per-student "Invite" button and invite link Tamagui Sheet (copy + share)
+- Created apps/mobile/app/(student)/join.tsx join code screen with auto-uppercase input and error handling
+- Updated (student)/_layout.tsx to hide join route from tab bar; added "Join a Class" CTA to student index
+- Updated app.json: scheme changed from "teacheros" to "ilm", added Android intentFilters for deep links
+- Updated _layout.tsx AuthGuard with deep link listener, initialUrlHandled ref guard, and pending invite token flow
+- Enforced invite org consistency and fixed join-by-code identity mapping
+- Added explicit invite deep-link user messaging for already used/expired/already linked scenarios
+- Aligned join code max length to 6 across mobile input and backend schema; updated invalid-code test fixture accordingly
+- 34 backend tests all pass (20 pre-existing + 14 new); pnpm typecheck passes with zero errors
+
 ### File List
+
+- apps/api/app/domains/onboarding/models.py
+- apps/api/app/domains/onboarding/repository.py
+- apps/api/app/domains/onboarding/schemas.py
+- apps/api/app/domains/onboarding/service.py
+- apps/api/app/domains/onboarding/router.py
+- apps/api/tests/test_onboarding_api.py
+- packages/contracts/src/onboarding.ts
+- packages/contracts/src/index.ts
+- apps/mobile/src/services/invite-service.ts (new)
+- apps/mobile/src/services/onboarding-service.ts
+- apps/mobile/app/(teacher)/class/[classId].tsx
+- apps/mobile/app/(teacher)/index.tsx
+- apps/mobile/app/(student)/join.tsx (new)
+- apps/mobile/app/(student)/_layout.tsx
+- apps/mobile/app/(student)/index.tsx
+- apps/mobile/app/_layout.tsx
+- apps/mobile/app.json
+- apps/mobile/package.json
+
+## Change Log
+
+- 2026-03-23: Story 4.8 implemented — invite link generation and acceptance, student join codes, deep link handling. 14 new tests added. pnpm typecheck passes. Status → review.
+- 2026-03-23: Senior Developer Review (AI) completed. Action-item mode selected; added follow-ups and set Status → in-progress.
+- 2026-03-23: High/Medium review findings fixed, validation rerun (34 API tests + mobile typecheck), Status → done.

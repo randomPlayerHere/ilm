@@ -1,11 +1,12 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
-// Android emulator routes to host via 10.0.2.2; iOS simulator shares host network
+// Android emulator routes to host via 10.0.2.2; iOS simulator/web share host network.
+// Override for physical devices or staging by setting EXPO_PUBLIC_API_URL in .env.local.
 const DEV_FALLBACK =
   Platform.OS === "android" ? "http://10.0.2.2:8000" : "http://localhost:8000";
 
-const API_BASE_URL: string =
+export const API_BASE_URL: string =
   Constants.expoConfig?.extra?.apiBaseUrl ?? DEV_FALLBACK;
 
 export class NetworkError extends Error {

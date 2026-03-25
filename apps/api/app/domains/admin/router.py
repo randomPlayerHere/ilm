@@ -4,36 +4,46 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.domains.admin.schemas import (
     AssignUserMembershipRequest,
+    ConsentConfirmResponse,
     InvitationAcceptRequest,
     InvitationAcceptResponse,
     InviteUserRequest,
     InviteUserResponse,
     OrganizationCreateRequest,
     OrganizationResponse,
+    PendingConsentListResponse,
     ProtectedOrganizationSummaryResponse,
     SafetyControlsResponse,
     SafetyControlsUpsertRequest,
+    StudentConsentRecordResponse,
+    StudentConsentSummaryResponse,
     UpdateUserRoleRequest,
     UpdateUserRoleResponse,
     UserLifecycleResponse,
 )
 from app.domains.admin.service import (
     AdminService,
+    ConsentAlreadyConfirmedError,
     DuplicateOrganizationError,
     InvalidLifecycleTransitionError,
     InvitationError,
     OrganizationNotFoundError,
     SafetyControlsAccessError,
     SafetyControlsValidationError,
+    StudentNotFoundForConsentError,
     UserLifecycleError,
     UserNotFoundError,
 )
 from app.domains.auth.dependencies import ActorContext, require_authenticated_actor
 from app.domains.auth.repository import InMemoryAuthRepository
+from app.domains.onboarding.repository import InMemoryOnboardingRepository
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
-_admin_service = AdminService(repository=InMemoryAuthRepository())
+_admin_service = AdminService(
+    repository=InMemoryAuthRepository(),
+    onboarding_repository=InMemoryOnboardingRepository(),
+)
 
 
 async def get_admin_service() -> AdminService:
@@ -42,13 +52,16 @@ async def get_admin_service() -> AdminService:
 
 def reset_admin_state_for_tests() -> None:
     InMemoryAuthRepository.reset_state()
+    InMemoryOnboardingRepository.reset_state()
 
 
 async def require_admin_actor(
     actor: ActorContext = Depends(require_authenticated_actor),
 ) -> ActorContext:
     if actor.role != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin permission required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin permission required"
+        )
     return actor
 
 
@@ -74,21 +87,33 @@ async def require_safety_controls_reader(
     return actor
 
 
-@router.post("/organizations", response_model=OrganizationResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/organizations",
+    response_model=OrganizationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_organization(
     payload: OrganizationCreateRequest,
     actor: ActorContext = Depends(require_admin_actor),
     service: AdminService = Depends(get_admin_service),
 ) -> OrganizationResponse:
     try:
-        org = service.create_organization(name=payload.name, slug=payload.slug, actor_id=actor.user_id)
+        org = service.create_organization(
+            name=payload.name, slug=payload.slug, actor_id=actor.user_id
+        )
     except DuplicateOrganizationError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
 
     return OrganizationResponse(org_id=org.org_id, name=org.name, slug=org.slug)
 
 
-@router.post("/users/invite", response_model=InviteUserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/users/invite",
+    response_model=InviteUserResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def invite_user(
     payload: InviteUserRequest,
     actor: ActorContext = Depends(require_admin_actor),
@@ -103,9 +128,13 @@ async def invite_user(
             expires_in_seconds=payload.expires_in_seconds,
         )
     except OrganizationNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     except UserLifecycleError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
 
     return InviteUserResponse(
         user_id=invited.user_id,
@@ -132,10 +161,16 @@ async def update_user_role(
             actor_id=actor.user_id,
         )
     except UserNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     except UserLifecycleError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return UpdateUserRoleResponse(user_id=updated.user_id, role=updated.role, org_id=updated.org_id)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+    return UpdateUserRoleResponse(
+        user_id=updated.user_id, role=updated.role, org_id=updated.org_id
+    )
 
 
 @router.post("/users/{user_id}/membership", response_model=UserLifecycleResponse)
@@ -152,10 +187,16 @@ async def assign_user_membership(
             actor_id=actor.user_id,
         )
     except UserNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     except OrganizationNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    return UserLifecycleResponse(user_id=updated.user_id, status=updated.status, org_id=updated.org_id)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    return UserLifecycleResponse(
+        user_id=updated.user_id, status=updated.status, org_id=updated.org_id
+    )
 
 
 @router.post("/users/{user_id}/activate", response_model=UserLifecycleResponse)
@@ -167,10 +208,16 @@ async def activate_user(
     try:
         updated = service.activate_user(user_id=user_id, actor_id=actor.user_id)
     except UserNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     except InvalidLifecycleTransitionError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return UserLifecycleResponse(user_id=updated.user_id, status=updated.status, org_id=updated.org_id)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+    return UserLifecycleResponse(
+        user_id=updated.user_id, status=updated.status, org_id=updated.org_id
+    )
 
 
 @router.post("/users/{user_id}/deactivate", response_model=UserLifecycleResponse)
@@ -182,10 +229,16 @@ async def deactivate_user(
     try:
         updated = service.deactivate_user(user_id=user_id, actor_id=actor.user_id)
     except UserNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     except InvalidLifecycleTransitionError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return UserLifecycleResponse(user_id=updated.user_id, status=updated.status, org_id=updated.org_id)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+    return UserLifecycleResponse(
+        user_id=updated.user_id, status=updated.status, org_id=updated.org_id
+    )
 
 
 @router.post("/invitations/accept", response_model=InvitationAcceptResponse)
@@ -201,13 +254,22 @@ async def accept_invitation(
     except InvitationError as exc:
         detail = str(exc)
         if "not valid for this organization" in detail:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail) from exc
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail) from exc
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail=detail
+            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=detail
+        ) from exc
 
-    return InvitationAcceptResponse(user_id=updated.user_id, status=updated.status, org_id=updated.org_id)
+    return InvitationAcceptResponse(
+        user_id=updated.user_id, status=updated.status, org_id=updated.org_id
+    )
 
 
-@router.get("/protected/organizations/{org_id}/summary", response_model=ProtectedOrganizationSummaryResponse)
+@router.get(
+    "/protected/organizations/{org_id}/summary",
+    response_model=ProtectedOrganizationSummaryResponse,
+)
 async def get_protected_organization_summary(
     org_id: str,
     actor: ActorContext = Depends(require_authorized_org_actor),
@@ -216,7 +278,9 @@ async def get_protected_organization_summary(
     try:
         summary = service.get_protected_org_summary(org_id=org_id)
     except OrganizationNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     return ProtectedOrganizationSummaryResponse(
         org_id=summary.org_id,
         organization_name=summary.organization_name,
@@ -224,7 +288,9 @@ async def get_protected_organization_summary(
     )
 
 
-@router.put("/organizations/{org_id}/safety-controls", response_model=SafetyControlsResponse)
+@router.put(
+    "/organizations/{org_id}/safety-controls", response_model=SafetyControlsResponse
+)
 async def upsert_safety_controls(
     org_id: str,
     payload: SafetyControlsUpsertRequest,
@@ -242,11 +308,17 @@ async def upsert_safety_controls(
             actor_org_id=actor.org_id,
         )
     except SafetyControlsAccessError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
     except SafetyControlsValidationError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
     except OrganizationNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     return SafetyControlsResponse(
         org_id=updated.org_id,
         version=updated.version,
@@ -259,7 +331,9 @@ async def upsert_safety_controls(
     )
 
 
-@router.get("/organizations/{org_id}/safety-controls", response_model=SafetyControlsResponse)
+@router.get(
+    "/organizations/{org_id}/safety-controls", response_model=SafetyControlsResponse
+)
 async def get_safety_controls(
     org_id: str,
     actor: ActorContext = Depends(require_safety_controls_reader),
@@ -268,9 +342,13 @@ async def get_safety_controls(
     try:
         controls = service.get_safety_controls(org_id=org_id, actor_org_id=actor.org_id)
     except SafetyControlsAccessError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
     except OrganizationNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     return SafetyControlsResponse(
         org_id=controls.org_id,
         version=controls.version,
@@ -280,4 +358,94 @@ async def get_safety_controls(
         max_response_tone=controls.max_response_tone,
         updated_by=controls.updated_by,
         updated_at=controls.updated_at,
+    )
+
+
+@router.post(
+    "/organizations/{org_id}/students/{student_id}/consent",
+    response_model=ConsentConfirmResponse,
+)
+async def confirm_student_consent(
+    org_id: str,
+    student_id: str,
+    actor: ActorContext = Depends(require_admin_actor),
+    service: AdminService = Depends(get_admin_service),
+) -> ConsentConfirmResponse:
+    if actor.org_id != org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    try:
+        result = service.confirm_consent(
+            student_id=student_id,
+            admin_user_id=actor.user_id,
+            org_id=org_id,
+        )
+    except StudentNotFoundForConsentError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    except ConsentAlreadyConfirmedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
+    return ConsentConfirmResponse(
+        student_id=result.student_id,
+        org_id=result.org_id,
+        consent_status=result.consent_status,
+        confirmed_by=result.confirmed_by,
+        confirmed_at=result.confirmed_at,
+    )
+
+
+@router.get(
+    "/organizations/{org_id}/students/pending-consent",
+    response_model=PendingConsentListResponse,
+)
+async def list_students_pending_consent(
+    org_id: str,
+    actor: ActorContext = Depends(require_admin_actor),
+    service: AdminService = Depends(get_admin_service),
+) -> PendingConsentListResponse:
+    if actor.org_id != org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    students = service.list_students_pending_consent(org_id=org_id)
+    return PendingConsentListResponse(
+        students=[
+            StudentConsentSummaryResponse(
+                student_id=s.student_id,
+                name=s.name,
+                grade_level=s.grade_level,
+                consent_status=s.consent_status,
+                org_id=s.org_id,
+            )
+            for s in students
+        ]
+    )
+
+
+@router.get(
+    "/organizations/{org_id}/students/{student_id}/consent",
+    response_model=StudentConsentRecordResponse,
+)
+async def get_student_consent_record(
+    org_id: str,
+    student_id: str,
+    actor: ActorContext = Depends(require_admin_actor),
+    service: AdminService = Depends(get_admin_service),
+) -> StudentConsentRecordResponse:
+    if actor.org_id != org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    try:
+        record = service.get_student_consent_record(
+            student_id=student_id, org_id=org_id
+        )
+    except StudentNotFoundForConsentError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    return StudentConsentRecordResponse(
+        student_id=record.student_id,
+        org_id=record.org_id,
+        consent_status=record.consent_status,
+        confirmed_by=record.confirmed_by,
+        confirmed_at=record.confirmed_at,
     )

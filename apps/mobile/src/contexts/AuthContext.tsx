@@ -39,6 +39,8 @@ interface AuthState {
   homePath: string | null;
   sessionExpired: boolean;
   lastEmail: string | null;
+  userId: string | null;
+  orgId: string | null;
 }
 
 interface AuthContextValue extends AuthState {
@@ -58,6 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     homePath: null,
     sessionExpired: false,
     lastEmail: null,
+    userId: null,
+    orgId: null,
   });
 
   // On mount, check for stored token
@@ -66,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const data = await getAuthData();
         if (data && !isTokenExpired(data.token)) {
+          const { sub: userId, org_id: orgId } = decodeJwtPayload(data.token);
           setState({
             isLoading: false,
             isAuthenticated: true,
@@ -74,6 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             homePath: data.homePath,
             sessionExpired: false,
             lastEmail: data.email,
+            userId,
+            orgId,
           });
           return;
         }
@@ -91,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(async (email: string, password: string) => {
     const response = await loginWithEmailPassword(email, password);
     await saveAuthData(response.access_token, response.role, response.home_path, email);
+    const { sub: userId, org_id: orgId } = decodeJwtPayload(response.access_token);
     setState({
       isLoading: false,
       isAuthenticated: true,
@@ -99,6 +107,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       homePath: response.home_path,
       sessionExpired: false,
       lastEmail: email,
+      userId,
+      orgId,
     });
   }, []);
 
@@ -129,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginResponse.home_path,
       response.data.user.email,
     );
+    const { sub: userId, org_id: orgId } = decodeJwtPayload(loginResponse.access_token);
     setState({
       isLoading: false,
       isAuthenticated: true,
@@ -137,6 +148,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       homePath: loginResponse.home_path,
       sessionExpired: false,
       lastEmail: response.data.user.email,
+      userId,
+      orgId,
     });
   }, []);
 
@@ -151,6 +164,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       homePath: null,
       sessionExpired: options?.sessionExpired ?? false,
       lastEmail: currentEmail,
+      userId: null,
+      orgId: null,
     });
   }, [state.lastEmail]);
 

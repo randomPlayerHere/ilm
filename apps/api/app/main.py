@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.domains.admin.router import router as admin_router
 from app.domains.auth.router import router as auth_router
 from app.domains.courses.router import router as courses_router
+from app.domains.onboarding.router import router as onboarding_router
 from app.domains.grading.router import router as grading_router
 from app.domains.health.router import router as health_router
 from app.domains.notifications.router import router as notifications_router
@@ -23,6 +24,7 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(auth_router)
+app.include_router(onboarding_router)
 app.include_router(admin_router)
 app.include_router(courses_router)
 app.include_router(grading_router)

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { I18nManager, Pressable, StyleSheet } from "react-native";
+import { I18nManager, Platform, Pressable, StyleSheet } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { colors, shadows, radii } from "@ilm/design-tokens";
@@ -14,7 +14,7 @@ export function CameraFab({ bottomOffset }: CameraFabProps) {
   return (
     <Pressable
       onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}

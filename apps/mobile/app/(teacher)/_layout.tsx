@@ -1,4 +1,4 @@
-import { View } from "react-native";
+import { View, Platform } from "react-native";
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -34,7 +34,7 @@ export default function TeacherLayout() {
           headerShown: false,
         }}
         screenListeners={{
-          tabPress: () => Haptics.selectionAsync(),
+          tabPress: () => { if (Platform.OS !== "web") Haptics.selectionAsync(); },
         }}
       >
         <Tabs.Screen
@@ -56,6 +56,10 @@ export default function TeacherLayout() {
         <Tabs.Screen
           name="settings"
           options={{ title: "More", tabBarAccessibilityLabel: "More tab", tabBarIcon: getTabBarIcon("teacher", "settings") }}
+        />
+        <Tabs.Screen
+          name="class"
+          options={{ href: null }}
         />
       </Tabs>
       <CameraFab bottomOffset={layout.tabBarHeight + insets.bottom + 24} />
