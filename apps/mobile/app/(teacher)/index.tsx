@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { FlatList, Alert } from "react-native";
+import { FlatList, Alert, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -44,7 +44,7 @@ export default function TeacherHome() {
     setCreating(true);
     setCreateError(null);
     try {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const created = await createClass(token, { name: newName.trim(), subject: newSubject.trim() });
       setClasses((prev) => [created, ...prev]);
       setSheetOpen(false);

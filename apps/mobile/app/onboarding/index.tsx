@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -672,7 +673,7 @@ export default function OnboardingScreen() {
 
   const handleComplete = async () => {
     if (userId) await markOnboardingComplete(userId);
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (Platform.OS !== "web") await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.replace(homePath as Parameters<typeof router.replace>[0]);
   };
 

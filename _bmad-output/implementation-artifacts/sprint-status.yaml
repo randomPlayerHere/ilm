@@ -85,7 +85,7 @@ development_status:
   # ============================================================
   # EPIC 4: Platform Bootstrap, Mobile Auth & Onboarding
   # ============================================================
-  epic-4: in-progress
+  epic-4: done
   4-1-initialize-turborepo-monorepo-and-project-scaffold: done
   4-2-local-infrastructure-with-docker-compose: done
   4-3-database-schema-initialization-and-migrations: done
@@ -96,7 +96,7 @@ development_status:
   4-8-invite-links-join-codes-and-parent-student-linking: done
   4-9-guided-onboarding-wizards-per-role: done
   4-10-coppa-consent-confirmation-gate: done
-  epic-4-retrospective: optional
+  epic-4-retrospective: done
 
   # ============================================================
   # EPIC 5: Teacher Mobile Grading Experience

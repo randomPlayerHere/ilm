@@ -153,11 +153,19 @@ export async function importStudentsCsv(
   fileName: string,
 ): Promise<CsvImportResponse> {
   const formData = new FormData();
-  formData.append("file", {
-    uri: fileUri,
-    name: fileName,
-    type: "text/csv",
-  } as unknown as Blob);
+  if (fileUri.startsWith("blob:") || fileUri.startsWith("data:")) {
+    // Web: fileUri is a blob/data URL — fetch it to get a real Blob
+    const blobRes = await fetch(fileUri);
+    const blob = await blobRes.blob();
+    formData.append("file", blob, fileName);
+  } else {
+    // Native: use React Native's FormData file pattern
+    formData.append("file", {
+      uri: fileUri,
+      name: fileName,
+      type: "text/csv",
+    } as unknown as Blob);
+  }
 
   const response = await fetch(
     `${API_BASE_URL}/onboarding/classes/${classId}/students/import`,

@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -31,7 +32,7 @@ export default function StudentLayout() {
         headerShown: false,
       }}
       screenListeners={{
-        tabPress: () => Haptics.selectionAsync(),
+        tabPress: () => { if (Platform.OS !== "web") Haptics.selectionAsync(); },
       }}
     >
       <Tabs.Screen

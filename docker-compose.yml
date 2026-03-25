@@ -52,6 +52,7 @@ services:
       - .env.local
     volumes:
       - ./apps/api:/app
+      - /app/.venv
     ports:
       - "8000:8000"
     depends_on:
@@ -74,6 +75,7 @@ services:
       - .env.local
     volumes:
       - ./apps/api:/app
+      - /app/.venv
     depends_on:
       postgres:
         condition: service_healthy

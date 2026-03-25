@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { FlatList, Alert, Share } from "react-native";
+import { FlatList, Alert, Share, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
@@ -68,7 +68,7 @@ export default function ClassRosterScreen() {
     setAdding(true);
     setAddError(null);
     try {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const student = await addStudent(token, classId, {
         name: addName.trim(),
         grade_level: addGrade.trim(),
@@ -133,7 +133,7 @@ export default function ClassRosterScreen() {
     if (!token || !classId) return;
     setInviteSheet({ studentId, studentName, url: null, loading: true, error: null });
     try {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const result = await generateInviteLink(token, classId, studentId);
       setInviteSheet({ studentId, studentName, url: result.url, loading: false, error: null });
     } catch {

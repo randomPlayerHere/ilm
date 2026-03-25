@@ -102,15 +102,19 @@ function AuthGuard() {
     }
 
     if (isAuthenticated && !inAuthGroup && !inOnboardingGroup && homePath && userId) {
-      // Async onboarding check — IIFE to handle Promise in useEffect
-      void (async () => {
-        const done = await isOnboardingComplete(userId);
-        if (!done) {
-          router.replace("/onboarding");
-        } else {
-          router.replace(homePath as Parameters<typeof router.replace>[0]);
-        }
-      })();
+      // Only redirect if not already inside the user's home group
+      const homeGroup = homePath.split("/").filter(Boolean)[0]; // e.g. "(teacher)"
+      const inHomeGroup = segments[0] === homeGroup;
+      if (!inHomeGroup) {
+        void (async () => {
+          const done = await isOnboardingComplete(userId);
+          if (!done) {
+            router.replace("/onboarding");
+          } else {
+            router.replace(homePath as Parameters<typeof router.replace>[0]);
+          }
+        })();
+      }
     }
   }, [isAuthenticated, isLoading, role, token, segments, homePath, userId, router]);
 
