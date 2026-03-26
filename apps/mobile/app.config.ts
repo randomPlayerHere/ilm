@@ -17,6 +17,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: "com.ilm.teacheros",
+    infoPlist: {
+      NSCameraUsageDescription:
+        "Teacher OS uses your camera to photograph student assignments for AI grading.",
+    },
   },
   android: {
     adaptiveIcon: {
@@ -24,6 +28,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       backgroundColor: "#FAFAF5",
     },
     package: "com.ilm.teacheros",
+    permissions: ["android.permission.CAMERA"],
     intentFilters: [
       {
         action: "VIEW",
@@ -44,6 +49,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     "expo-font",
     "expo-secure-store",
     "@react-native-google-signin/google-signin",
+    "expo-camera",
   ],
   scheme: "ilm",
   extra: {

@@ -40,3 +40,13 @@ export type {
   LinkedChildResponse,
   LinkedChildrenResponse,
 } from "./onboarding";
+
+/** Grading contracts */
+export type {
+  AIGradingResultResponse,
+  GradingJobResponse,
+  GradingJobWithResultResponse,
+  GradeApprovalResponse,
+  AIConfidenceLevel,
+  AIGradingErrorCode,
+} from "./grading";

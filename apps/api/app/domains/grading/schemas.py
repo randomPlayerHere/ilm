@@ -61,6 +61,10 @@ class GradingResultResponse(BaseModel):
     rubric_mapping: dict[str, str]
     draft_feedback: str
     generated_at: str
+    confidence_level: str  # "high" | "medium" | "low"
+    confidence_score: float  # 0.0 – 1.0
+    confidence_reason: str | None  # present for non-high confidence
+    practice_recommendations: list[str]
 
 
 class GradingJobWithResultResponse(BaseModel):

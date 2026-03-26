@@ -2,19 +2,24 @@ import { useState } from "react";
 import { I18nManager, Platform, Pressable, StyleSheet } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import { colors, shadows, radii } from "@ilm/design-tokens";
 
 interface CameraFabProps {
   bottomOffset: number;
+  classId?: string;
+  studentId?: string;
 }
 
-export function CameraFab({ bottomOffset }: CameraFabProps) {
+export function CameraFab({ bottomOffset, classId = "cls_demo_math_1", studentId = "stu_demo_1" }: CameraFabProps) {
   const [focused, setFocused] = useState(false);
+  const router = useRouter();
 
   return (
     <Pressable
       onPress={() => {
         if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        router.push({ pathname: "/(teacher)/camera", params: { classId, studentId } });
       }}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}

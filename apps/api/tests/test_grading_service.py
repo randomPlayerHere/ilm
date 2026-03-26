@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import pytest
 
+from app.domains.grading.ai_provider import (
+    AIGradingProvider,
+    MockAIGradingProvider,
+    NonMockAIGradingProvider,
+)
 from app.domains.grading.repository import InMemoryGradingRepository
 from app.domains.grading.service import (
     ArtifactFormatError,
     GradingAccessError,
-    GradingProcessError,
     GradingService,
     GradingStateError,
 )
@@ -14,11 +18,17 @@ from app.domains.grading.service import (
 
 def setup_function() -> None:
     InMemoryGradingRepository.reset_state()
-    GradingService._fail_on_job_ids.clear()
+    MockAIGradingProvider.reset()
 
 
-def _make_service() -> GradingService:
-    return GradingService(repository=InMemoryGradingRepository())
+def _make_service(
+    repository: InMemoryGradingRepository | None = None,
+    ai_provider: AIGradingProvider | None = None,
+) -> GradingService:
+    return GradingService(
+        repository=repository or InMemoryGradingRepository(),
+        ai_provider=ai_provider or MockAIGradingProvider(),
+    )
 
 
 def _create_demo_assignment(service: GradingService) -> str:
@@ -578,6 +588,8 @@ def test_process_grading_job_success() -> None:
     assert result.proposed_score == "85/100"
     assert "content_accuracy" in result.rubric_mapping
     assert result.draft_feedback
+    assert isinstance(result.practice_recommendations, list)
+    assert len(result.practice_recommendations) > 0
 
 
 def test_process_grading_job_idempotent_when_already_completed() -> None:
@@ -697,11 +709,12 @@ def test_get_grading_job_status_cross_tenant_forbidden() -> None:
         )
 
 
-# --- Transient error simulation ---
+# --- AI provider error handling ---
 
 
-def test_process_grading_job_simulated_failure_sets_status_failed() -> None:
-    """Injectable error causes job to transition to 'failed' and raises GradingProcessError."""
+def test_process_grading_job_non_retryable_error_sets_status_failed() -> None:
+    """Non-retryable error (IMAGE_BLURRY) causes job to transition to 'failed' immediately."""
+    MockAIGradingProvider.set_scenario("fail_image_blurry")
     service = _make_service()
     assignment_id = _create_demo_assignment(service)
     artifact_id = _create_demo_artifact(service, assignment_id)
@@ -711,9 +724,7 @@ def test_process_grading_job_simulated_failure_sets_status_failed() -> None:
         assignment_id=assignment_id,
         artifact_id=artifact_id,
     )
-    GradingService._fail_on_job_ids.add(job.job_id)
-    with pytest.raises(GradingProcessError):
-        service.process_grading_job(job.job_id)
+    service.process_grading_job(job.job_id, _sleep=lambda _: None)
     job_status = service.get_grading_job_status(
         actor_user_id="usr_teacher_1",
         actor_org_id="org_demo_1",
@@ -721,12 +732,30 @@ def test_process_grading_job_simulated_failure_sets_status_failed() -> None:
         job_id=job.job_id,
     )
     assert job_status.status == "failed"
-    assert job_status.attempt_count == 1
+    assert job_status.attempt_count == 1  # no retries — IMAGE_BLURRY is not retryable
     assert job_status.result is None
+
+
+def test_process_grading_job_terminal_failure_routes_to_dlq() -> None:
+    """Terminal AI failures are routed to the in-memory DLQ per Story 5.1 AC4."""
+    MockAIGradingProvider.set_scenario("fail_image_blurry")
+    repository = InMemoryGradingRepository()
+    service = _make_service(repository=repository)
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job = service.submit_grading_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        artifact_id=artifact_id,
+    )
+    service.process_grading_job(job.job_id, _sleep=lambda _: None)
+    assert repository.is_grading_job_in_dlq(job.job_id)
 
 
 def test_process_grading_job_failed_job_is_idempotent_no_op() -> None:
     """A job already in 'failed' state is skipped (idempotency guard)."""
+    MockAIGradingProvider.set_scenario("fail_image_blurry")
     service = _make_service()
     assignment_id = _create_demo_assignment(service)
     artifact_id = _create_demo_artifact(service, assignment_id)
@@ -736,11 +765,9 @@ def test_process_grading_job_failed_job_is_idempotent_no_op() -> None:
         assignment_id=assignment_id,
         artifact_id=artifact_id,
     )
-    GradingService._fail_on_job_ids.add(job.job_id)
-    with pytest.raises(GradingProcessError):
-        service.process_grading_job(job.job_id)
+    service.process_grading_job(job.job_id, _sleep=lambda _: None)
     # Second call must be a no-op (idempotency guard: status == "failed")
-    service.process_grading_job(job.job_id)  # should not raise
+    service.process_grading_job(job.job_id, _sleep=lambda _: None)
     job_status = service.get_grading_job_status(
         actor_user_id="usr_teacher_1",
         actor_org_id="org_demo_1",
@@ -750,10 +777,108 @@ def test_process_grading_job_failed_job_is_idempotent_no_op() -> None:
     assert job_status.attempt_count == 1  # not incremented by second call
 
 
+def test_process_grading_job_retries_on_model_error() -> None:
+    """Retryable error (MODEL_ERROR) on first call succeeds after one retry."""
+    MockAIGradingProvider.set_scenario("fail_then_succeed", fail_count=1)
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job = service.submit_grading_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        artifact_id=artifact_id,
+    )
+    service.process_grading_job(job.job_id, _sleep=lambda _: None)
+    job_status = service.get_grading_job_status(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job.job_id,
+    )
+    assert job_status.status == "completed"
+    assert job_status.attempt_count == 2  # initial + 1 retry
+    assert job_status.result is not None
+    assert job_status.result.confidence_level == "high"
+
+
+def test_process_grading_job_fails_after_max_retries() -> None:
+    """Retryable error exhausts all 3 attempts, job marked 'failed'."""
+    MockAIGradingProvider.set_scenario("fail_model_error")
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job = service.submit_grading_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        artifact_id=artifact_id,
+    )
+    service.process_grading_job(job.job_id, _sleep=lambda _: None)
+    job_status = service.get_grading_job_status(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job.job_id,
+    )
+    assert job_status.status == "failed"
+    assert job_status.attempt_count == 3  # all 3 attempts exhausted
+    assert job_status.result is None
+
+
+def test_process_grading_job_result_includes_confidence() -> None:
+    """Completed job result includes confidence fields from mock scenario."""
+    MockAIGradingProvider.set_scenario("success_medium")
+    service = _make_service()
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job = service.submit_grading_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        artifact_id=artifact_id,
+    )
+    service.process_grading_job(job.job_id, _sleep=lambda _: None)
+    job_status = service.get_grading_job_status(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job.job_id,
+    )
+    assert job_status.result is not None
+    assert job_status.result.confidence_level == "medium"
+    assert 0.5 <= job_status.result.confidence_score <= 0.7
+    assert job_status.result.confidence_reason is not None  # medium always has reason
+
+
+def test_process_grading_job_non_mock_provider_fails_cleanly() -> None:
+    """Non-mock provider path behaves distinctly and fails gracefully."""
+    service = _make_service(ai_provider=NonMockAIGradingProvider())
+    assignment_id = _create_demo_assignment(service)
+    artifact_id = _create_demo_artifact(service, assignment_id)
+    job = service.submit_grading_job(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        artifact_id=artifact_id,
+    )
+    service.process_grading_job(job.job_id, _sleep=lambda _: None)
+    job_status = service.get_grading_job_status(
+        actor_user_id="usr_teacher_1",
+        actor_org_id="org_demo_1",
+        assignment_id=assignment_id,
+        job_id=job.job_id,
+    )
+    assert job_status.status == "failed"
+    assert job_status.result is None
+
+
 # --- Approval gate ---
 
 
-def _submit_and_process(service: GradingService, assignment_id: str, artifact_id: str) -> str:
+def _submit_and_process(
+    service: GradingService, assignment_id: str, artifact_id: str
+) -> str:
     """Submit a grading job and process it; return job_id."""
     job = service.submit_grading_job(
         actor_user_id="usr_teacher_1",
@@ -1041,7 +1166,9 @@ def test_list_grade_versions_cross_tenant_forbidden() -> None:
 # --- Recommendation jobs ---
 
 
-def _submit_approve_and_get_job_id(service: GradingService, assignment_id: str, artifact_id: str) -> str:
+def _submit_approve_and_get_job_id(
+    service: GradingService, assignment_id: str, artifact_id: str
+) -> str:
     """Submit, process, and approve a grading job; return job_id."""
     job_id = _submit_and_process(service, assignment_id, artifact_id)
     service.approve_grading_job(

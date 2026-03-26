@@ -7,7 +7,7 @@
     "dev": "expo start --dev-client",
     "build": "expo export",
     "lint": "echo 'lint ok'",
-    "test": "echo 'no tests yet'",
+    "test": "jest --passWithNoTests",
     "typecheck": "tsc --noEmit",
     "android": "expo run:android",
     "ios": "expo run:ios"
@@ -22,6 +22,8 @@
     "@tamagui/config": "^1.114.0",
     "@tamagui/core": "^1.114.0",
     "expo": "~52.0.0",
+    "expo-camera": "~16.0.0",
+    "expo-image-manipulator": "~13.0.0",
     "expo-clipboard": "^55.0.9",
     "expo-constants": "~17.0.0",
     "expo-dev-client": "^55.0.18",
@@ -42,7 +44,21 @@
     "tamagui": "^1.114.0"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^12.4.0",
+    "@types/jest": "^29.0.0",
     "@types/react": "~18.3.0",
+    "jest": "^29.0.0",
+    "jest-expo": "~52.0.0",
     "typescript": "^5.6.0"
+  },
+  "jest": {
+    "preset": "jest-expo",
+    "setupFilesAfterEnv": [],
+    "transformIgnorePatterns": [
+      "node_modules/(?!(?:.*node_modules/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|tamagui|@tamagui/.*))"
+    ],
+    "moduleNameMapper": {
+      "^@ilm/(.*)$": "<rootDir>/../../packages/$1/src"
+    }
   }
 }

@@ -3,21 +3,31 @@ from __future__ import annotations
 import asyncio
 
 import httpx
+import os
 
 from app.core.security import create_access_token
+from app.domains.grading.ai_provider import (
+    MockAIGradingProvider,
+    NonMockAIGradingProvider,
+)
+from app.domains.grading.router import _make_ai_provider
 from app.domains.auth.router import reset_auth_state_for_tests
 from app.domains.grading.router import reset_grading_state_for_tests
 from app.main import app
 
 
 def _teacher_headers() -> dict[str, str]:
-    token, _ = create_access_token(subject="usr_teacher_1", org_id="org_demo_1", role="teacher")
+    token, _ = create_access_token(
+        subject="usr_teacher_1", org_id="org_demo_1", role="teacher"
+    )
     return {"Authorization": f"Bearer {token}"}
 
 
 def _non_teacher_headers() -> dict[str, str]:
     # usr_teacher_1 is stored as role="teacher" in auth repo — mismatched role token → 403
-    token, _ = create_access_token(subject="usr_teacher_1", org_id="org_demo_1", role="parent")
+    token, _ = create_access_token(
+        subject="usr_teacher_1", org_id="org_demo_1", role="parent"
+    )
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -27,7 +37,23 @@ def setup_function() -> None:
     app.dependency_overrides.clear()
 
 
-async def _create_assignment(client: httpx.AsyncClient, title: str = "Chapter 3 Quiz") -> str:
+def test_make_ai_provider_switches_with_env_var() -> None:
+    original = os.environ.get("AI_MOCK_MODE")
+    try:
+        os.environ["AI_MOCK_MODE"] = "true"
+        assert isinstance(_make_ai_provider(), MockAIGradingProvider)
+        os.environ["AI_MOCK_MODE"] = "false"
+        assert isinstance(_make_ai_provider(), NonMockAIGradingProvider)
+    finally:
+        if original is None:
+            os.environ.pop("AI_MOCK_MODE", None)
+        else:
+            os.environ["AI_MOCK_MODE"] = original
+
+
+async def _create_assignment(
+    client: httpx.AsyncClient, title: str = "Chapter 3 Quiz"
+) -> str:
     resp = await client.post(
         "/grading/assignments",
         headers=_teacher_headers(),
@@ -43,7 +69,9 @@ async def _create_assignment(client: httpx.AsyncClient, title: str = "Chapter 3 
 def test_create_assignment_teacher_success() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post(
                 "/grading/assignments",
                 headers=_teacher_headers(),
@@ -64,7 +92,9 @@ def test_create_assignment_teacher_success() -> None:
 def test_create_assignment_unauthenticated() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post(
                 "/grading/assignments",
                 json={"class_id": "cls_demo_math_1", "title": "Quiz"},
@@ -77,7 +107,9 @@ def test_create_assignment_unauthenticated() -> None:
 def test_create_assignment_non_teacher_forbidden() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post(
                 "/grading/assignments",
                 headers=_non_teacher_headers(),
@@ -91,7 +123,9 @@ def test_create_assignment_non_teacher_forbidden() -> None:
 def test_create_assignment_unknown_class_forbidden() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post(
                 "/grading/assignments",
                 headers=_teacher_headers(),
@@ -105,7 +139,9 @@ def test_create_assignment_unknown_class_forbidden() -> None:
 def test_create_assignment_cross_tenant_class_forbidden() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post(
                 "/grading/assignments",
                 headers=_teacher_headers(),
@@ -122,7 +158,9 @@ def test_create_assignment_cross_tenant_class_forbidden() -> None:
 def test_upload_artifact_jpeg_success() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             resp = await client.post(
                 f"/grading/assignments/{assignment_id}/artifacts",
@@ -149,7 +187,9 @@ def test_upload_artifact_jpeg_success() -> None:
 def test_upload_artifact_png_success() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             resp = await client.post(
                 f"/grading/assignments/{assignment_id}/artifacts",
@@ -166,7 +206,9 @@ def test_upload_artifact_png_success() -> None:
 def test_upload_artifact_pdf_success() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             resp = await client.post(
                 f"/grading/assignments/{assignment_id}/artifacts",
@@ -183,7 +225,9 @@ def test_upload_artifact_pdf_success() -> None:
 def test_upload_artifact_webp_success() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             resp = await client.post(
                 f"/grading/assignments/{assignment_id}/artifacts",
@@ -200,7 +244,9 @@ def test_upload_artifact_webp_success() -> None:
 def test_upload_artifact_gif_success() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             resp = await client.post(
                 f"/grading/assignments/{assignment_id}/artifacts",
@@ -217,13 +263,17 @@ def test_upload_artifact_gif_success() -> None:
 def test_upload_artifact_rejects_unsupported_format() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             resp = await client.post(
                 f"/grading/assignments/{assignment_id}/artifacts",
                 headers=_teacher_headers(),
                 data={"student_id": "stu_demo_1"},
-                files={"file": ("virus.exe", b"MZ\x90\x00", "application/x-msdownload")},
+                files={
+                    "file": ("virus.exe", b"MZ\x90\x00", "application/x-msdownload")
+                },
             )
             assert resp.status_code == 422
             body = resp.json()
@@ -236,7 +286,9 @@ def test_upload_artifact_rejects_unsupported_format() -> None:
 def test_upload_artifact_unauthenticated() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post(
                 "/grading/assignments/asgn_1/artifacts",
                 data={"student_id": "stu_demo_1"},
@@ -250,7 +302,9 @@ def test_upload_artifact_unauthenticated() -> None:
 def test_upload_artifact_non_teacher_forbidden() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post(
                 "/grading/assignments/asgn_1/artifacts",
                 headers=_non_teacher_headers(),
@@ -265,7 +319,9 @@ def test_upload_artifact_non_teacher_forbidden() -> None:
 def test_upload_artifact_unknown_assignment_forbidden() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post(
                 "/grading/assignments/asgn_unknown/artifacts",
                 headers=_teacher_headers(),
@@ -279,9 +335,12 @@ def test_upload_artifact_unknown_assignment_forbidden() -> None:
 
 def test_upload_artifact_metadata_links_assignment_student_class_org() -> None:
     """AC1: file is stored and retrievable; metadata links to assignment, student, class, org."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             upload_resp = await client.post(
                 f"/grading/assignments/{assignment_id}/artifacts",
@@ -305,7 +364,9 @@ def test_upload_artifact_metadata_links_assignment_student_class_org() -> None:
 def test_get_artifact_success() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             upload_resp = await client.post(
                 f"/grading/assignments/{assignment_id}/artifacts",
@@ -329,7 +390,9 @@ def test_get_artifact_success() -> None:
 def test_get_artifact_unauthenticated() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.get("/grading/assignments/asgn_1/artifacts/artf_1")
             assert resp.status_code == 401
 
@@ -339,7 +402,9 @@ def test_get_artifact_unauthenticated() -> None:
 def test_get_artifact_non_teacher_forbidden() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.get(
                 "/grading/assignments/asgn_1/artifacts/artf_1",
                 headers=_non_teacher_headers(),
@@ -352,7 +417,9 @@ def test_get_artifact_non_teacher_forbidden() -> None:
 def test_get_artifact_fail_closed_unknown() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.get(
                 "/grading/assignments/asgn_1/artifacts/artf_unknown",
                 headers=_teacher_headers(),
@@ -368,7 +435,9 @@ def test_get_artifact_fail_closed_unknown() -> None:
 def test_list_artifacts_for_assignment_success() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             for fname, mt in [("a.jpg", "image/jpeg"), ("b.pdf", "application/pdf")]:
                 await client.post(
@@ -394,7 +463,9 @@ def test_list_artifacts_for_assignment_success() -> None:
 def test_list_artifacts_unauthenticated() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.get("/grading/assignments/asgn_1/artifacts")
             assert resp.status_code == 401
 
@@ -404,7 +475,9 @@ def test_list_artifacts_unauthenticated() -> None:
 def test_list_artifacts_non_teacher_forbidden() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.get(
                 "/grading/assignments/asgn_1/artifacts",
                 headers=_non_teacher_headers(),
@@ -417,7 +490,9 @@ def test_list_artifacts_non_teacher_forbidden() -> None:
 def test_list_artifacts_unknown_assignment_forbidden() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.get(
                 "/grading/assignments/asgn_unknown/artifacts",
                 headers=_teacher_headers(),
@@ -444,7 +519,9 @@ async def _upload_artifact(client: httpx.AsyncClient, assignment_id: str) -> str
 def test_submit_grading_job_success() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             artifact_id = await _upload_artifact(client, assignment_id)
             resp = await client.post(
@@ -467,9 +544,12 @@ def test_submit_grading_job_success() -> None:
 
 def test_submit_grading_job_idempotent() -> None:
     """Two POSTs for the same artifact return the same job_id."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             artifact_id = await _upload_artifact(client, assignment_id)
             resp1 = await client.post(
@@ -492,7 +572,9 @@ def test_submit_grading_job_idempotent() -> None:
 def test_submit_grading_job_unauthenticated() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post(
                 "/grading/assignments/asgn_1/grading-jobs",
                 json={"artifact_id": "artf_1"},
@@ -505,7 +587,9 @@ def test_submit_grading_job_unauthenticated() -> None:
 def test_submit_grading_job_non_teacher_forbidden() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post(
                 "/grading/assignments/asgn_1/grading-jobs",
                 headers=_non_teacher_headers(),
@@ -519,7 +603,9 @@ def test_submit_grading_job_non_teacher_forbidden() -> None:
 def test_submit_grading_job_unknown_artifact_forbidden() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             resp = await client.post(
                 f"/grading/assignments/{assignment_id}/grading-jobs",
@@ -533,9 +619,12 @@ def test_submit_grading_job_unknown_artifact_forbidden() -> None:
 
 def test_submit_grading_job_mismatched_assignment_forbidden() -> None:
     """Artifact belonging to a different assignment returns 403 at the API level."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             # Create two separate assignments and upload an artifact to the first
             assignment_id_1 = await _create_assignment(client)
             assignment_id_2 = await _create_assignment(client)
@@ -556,9 +645,12 @@ def test_submit_grading_job_mismatched_assignment_forbidden() -> None:
 
 def test_get_grading_job_returns_200() -> None:
     """GET grading job returns 200 after submission (background task runs synchronously in ASGI tests)."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             artifact_id = await _upload_artifact(client, assignment_id)
             submit_resp = await client.post(
@@ -579,9 +671,12 @@ def test_get_grading_job_returns_200() -> None:
 
 def test_get_grading_job_completed() -> None:
     """After background task processes the job, GET returns status 'completed' with result."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             artifact_id = await _upload_artifact(client, assignment_id)
             submit_resp = await client.post(
@@ -607,6 +702,11 @@ def test_get_grading_job_completed() -> None:
             assert "content_accuracy" in result["rubric_mapping"]
             assert result["draft_feedback"]
             assert result["generated_at"]
+            assert result["confidence_level"] in ("high", "medium", "low")
+            assert isinstance(result["confidence_score"], float)
+            assert 0.0 <= result["confidence_score"] <= 1.0
+            assert "confidence_reason" in result  # may be None for high confidence
+            assert isinstance(result["practice_recommendations"], list)
 
     asyncio.run(scenario())
 
@@ -614,7 +714,9 @@ def test_get_grading_job_completed() -> None:
 def test_get_grading_job_unauthenticated() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.get("/grading/assignments/asgn_1/grading-jobs/gjob_1")
             assert resp.status_code == 401
 
@@ -624,7 +726,9 @@ def test_get_grading_job_unauthenticated() -> None:
 def test_get_grading_job_non_teacher_forbidden() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.get(
                 "/grading/assignments/asgn_1/grading-jobs/gjob_1",
                 headers=_non_teacher_headers(),
@@ -637,7 +741,9 @@ def test_get_grading_job_non_teacher_forbidden() -> None:
 def test_get_grading_job_unknown_job_forbidden() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             resp = await client.get(
                 f"/grading/assignments/{assignment_id}/grading-jobs/gjob_does_not_exist",
@@ -651,7 +757,9 @@ def test_get_grading_job_unknown_job_forbidden() -> None:
 # --- Approval endpoints ---
 
 
-async def _submit_and_process_job(client: httpx.AsyncClient, assignment_id: str, artifact_id: str) -> str:
+async def _submit_and_process_job(
+    client: httpx.AsyncClient, assignment_id: str, artifact_id: str
+) -> str:
     """Submit a grading job and return job_id. BackgroundTasks run synchronously in ASGITransport."""
     resp = await client.post(
         f"/grading/assignments/{assignment_id}/grading-jobs",
@@ -665,7 +773,9 @@ async def _submit_and_process_job(client: httpx.AsyncClient, assignment_id: str,
 def test_approve_grading_job_success() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             artifact_id = await _upload_artifact(client, assignment_id)
             job_id = await _submit_and_process_job(client, assignment_id, artifact_id)
@@ -673,7 +783,10 @@ def test_approve_grading_job_success() -> None:
             resp = await client.post(
                 f"/grading/assignments/{assignment_id}/grading-jobs/{job_id}/approve",
                 headers=_teacher_headers(),
-                json={"approved_score": "90/100", "approved_feedback": "Excellent work."},
+                json={
+                    "approved_score": "90/100",
+                    "approved_feedback": "Excellent work.",
+                },
             )
             assert resp.status_code == 200
             body = resp.json()
@@ -690,7 +803,9 @@ def test_approve_grading_job_success() -> None:
 def test_approve_grading_job_reapproval_increments_version() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             artifact_id = await _upload_artifact(client, assignment_id)
             job_id = await _submit_and_process_job(client, assignment_id, artifact_id)
@@ -715,7 +830,9 @@ def test_approve_grading_job_reapproval_increments_version() -> None:
 def test_approve_grading_job_unauthenticated() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post(
                 "/grading/assignments/asgn_1/grading-jobs/gjob_1/approve",
                 json={"approved_score": "85/100", "approved_feedback": "Good."},
@@ -728,7 +845,9 @@ def test_approve_grading_job_unauthenticated() -> None:
 def test_approve_grading_job_non_teacher_forbidden() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post(
                 "/grading/assignments/asgn_1/grading-jobs/gjob_1/approve",
                 headers=_non_teacher_headers(),
@@ -741,13 +860,17 @@ def test_approve_grading_job_non_teacher_forbidden() -> None:
 
 def test_approve_grading_job_not_completed_conflict() -> None:
     """Approving a job still in pending state returns 409."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             artifact_id = await _upload_artifact(client, assignment_id)
             # Create a pending job directly via the repository (bypassing background task)
             from app.domains.grading.router import _grading_service
+
             assign = _grading_service._repository.get_assignment(assignment_id)
             job_record = _grading_service._repository.create_grading_job(
                 artifact_id=artifact_id + "_pending",
@@ -768,7 +891,9 @@ def test_approve_grading_job_not_completed_conflict() -> None:
 def test_get_grade_approval_success() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             artifact_id = await _upload_artifact(client, assignment_id)
             job_id = await _submit_and_process_job(client, assignment_id, artifact_id)
@@ -794,7 +919,9 @@ def test_get_grade_approval_success() -> None:
 def test_get_grade_approval_unapproved_forbidden() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             artifact_id = await _upload_artifact(client, assignment_id)
             job_id = await _submit_and_process_job(client, assignment_id, artifact_id)
@@ -811,7 +938,9 @@ def test_get_grade_approval_unapproved_forbidden() -> None:
 def test_list_grade_versions_success() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             artifact_id = await _upload_artifact(client, assignment_id)
             job_id = await _submit_and_process_job(client, assignment_id, artifact_id)
@@ -839,7 +968,9 @@ def test_list_grade_versions_success() -> None:
 def test_get_grading_job_with_result_includes_is_approved_field() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             artifact_id = await _upload_artifact(client, assignment_id)
             job_id = await _submit_and_process_job(client, assignment_id, artifact_id)
@@ -871,8 +1002,12 @@ def test_get_grading_job_with_result_includes_is_approved_field() -> None:
 def test_get_grade_approval_unauthenticated() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-            resp = await client.get("/grading/assignments/asgn_1/grading-jobs/gjob_1/approval")
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
+            resp = await client.get(
+                "/grading/assignments/asgn_1/grading-jobs/gjob_1/approval"
+            )
             assert resp.status_code == 401
 
     asyncio.run(scenario())
@@ -881,7 +1016,9 @@ def test_get_grade_approval_unauthenticated() -> None:
 def test_get_grade_approval_non_teacher_forbidden() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.get(
                 "/grading/assignments/asgn_1/grading-jobs/gjob_1/approval",
                 headers=_non_teacher_headers(),
@@ -894,8 +1031,12 @@ def test_get_grade_approval_non_teacher_forbidden() -> None:
 def test_list_grade_versions_unauthenticated() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-            resp = await client.get("/grading/assignments/asgn_1/grading-jobs/gjob_1/versions")
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
+            resp = await client.get(
+                "/grading/assignments/asgn_1/grading-jobs/gjob_1/versions"
+            )
             assert resp.status_code == 401
 
     asyncio.run(scenario())
@@ -904,7 +1045,9 @@ def test_list_grade_versions_unauthenticated() -> None:
 def test_list_grade_versions_non_teacher_forbidden() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.get(
                 "/grading/assignments/asgn_1/grading-jobs/gjob_1/versions",
                 headers=_non_teacher_headers(),
@@ -933,12 +1076,17 @@ async def _submit_approve_and_get_job_id(
 
 def test_submit_recommendation_job_success() -> None:
     """AC1: POST 202, body has rec_job_id/job_id/student_id/status=pending."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             artifact_id = await _upload_artifact(client, assignment_id)
-            job_id = await _submit_approve_and_get_job_id(client, assignment_id, artifact_id)
+            job_id = await _submit_approve_and_get_job_id(
+                client, assignment_id, artifact_id
+            )
 
             resp = await client.post(
                 f"/grading/assignments/{assignment_id}/grading-jobs/{job_id}/recommendation-jobs",
@@ -949,16 +1097,21 @@ def test_submit_recommendation_job_success() -> None:
             assert body["rec_job_id"].startswith("rec_")
             assert body["job_id"] == job_id
             assert body["student_id"] == "stu_demo_1"
-            assert body["status"] == "pending"  # Response body reflects pre-background-task state
+            assert (
+                body["status"] == "pending"
+            )  # Response body reflects pre-background-task state
 
     asyncio.run(scenario())
 
 
 def test_submit_recommendation_job_unauthenticated() -> None:
     """AC7: unauthenticated → 401."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post(
                 "/grading/assignments/asgn_1/grading-jobs/gjob_1/recommendation-jobs",
             )
@@ -969,9 +1122,12 @@ def test_submit_recommendation_job_unauthenticated() -> None:
 
 def test_submit_recommendation_job_non_teacher_forbidden() -> None:
     """AC7: non-teacher → 403."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post(
                 "/grading/assignments/asgn_1/grading-jobs/gjob_1/recommendation-jobs",
                 headers=_non_teacher_headers(),
@@ -983,9 +1139,12 @@ def test_submit_recommendation_job_non_teacher_forbidden() -> None:
 
 def test_get_recommendation_job_unauthenticated() -> None:
     """AC7: unauthenticated → 401 on GET poll endpoint."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.get(
                 "/grading/assignments/asgn_1/grading-jobs/gjob_1/recommendation-jobs/rec_1",
             )
@@ -996,9 +1155,12 @@ def test_get_recommendation_job_unauthenticated() -> None:
 
 def test_get_recommendation_job_non_teacher_forbidden() -> None:
     """AC7: non-teacher → 403 on GET poll endpoint."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.get(
                 "/grading/assignments/asgn_1/grading-jobs/gjob_1/recommendation-jobs/rec_1",
                 headers=_non_teacher_headers(),
@@ -1010,9 +1172,12 @@ def test_get_recommendation_job_non_teacher_forbidden() -> None:
 
 def test_confirm_recommendations_unauthenticated() -> None:
     """AC7: unauthenticated → 401 on POST confirm endpoint."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post(
                 "/grading/assignments/asgn_1/grading-jobs/gjob_1/recommendation-jobs/rec_1/confirm",
                 json={"topics": []},
@@ -1024,9 +1189,12 @@ def test_confirm_recommendations_unauthenticated() -> None:
 
 def test_confirm_recommendations_non_teacher_forbidden() -> None:
     """AC7: non-teacher → 403 on POST confirm endpoint."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.post(
                 "/grading/assignments/asgn_1/grading-jobs/gjob_1/recommendation-jobs/rec_1/confirm",
                 headers=_non_teacher_headers(),
@@ -1039,9 +1207,12 @@ def test_confirm_recommendations_non_teacher_forbidden() -> None:
 
 def test_get_confirmed_recommendations_unauthenticated() -> None:
     """AC7: unauthenticated → 401 on GET confirm endpoint."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.get(
                 "/grading/assignments/asgn_1/grading-jobs/gjob_1/recommendation-jobs/rec_1/confirm",
             )
@@ -1052,9 +1223,12 @@ def test_get_confirmed_recommendations_unauthenticated() -> None:
 
 def test_get_confirmed_recommendations_non_teacher_forbidden() -> None:
     """AC7: non-teacher → 403 on GET confirm endpoint."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             resp = await client.get(
                 "/grading/assignments/asgn_1/grading-jobs/gjob_1/recommendation-jobs/rec_1/confirm",
                 headers=_non_teacher_headers(),
@@ -1066,9 +1240,12 @@ def test_get_confirmed_recommendations_non_teacher_forbidden() -> None:
 
 def test_submit_recommendation_job_not_approved_conflict() -> None:
     """AC3: 409 when grading job not yet approved."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             artifact_id = await _upload_artifact(client, assignment_id)
             # Submit grading job (BackgroundTasks run synchronously → job is completed but NOT approved)
@@ -1085,12 +1262,17 @@ def test_submit_recommendation_job_not_approved_conflict() -> None:
 
 def test_submit_recommendation_job_idempotent() -> None:
     """AC1: same rec_job_id on second POST."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             artifact_id = await _upload_artifact(client, assignment_id)
-            job_id = await _submit_approve_and_get_job_id(client, assignment_id, artifact_id)
+            job_id = await _submit_approve_and_get_job_id(
+                client, assignment_id, artifact_id
+            )
 
             resp1 = await client.post(
                 f"/grading/assignments/{assignment_id}/grading-jobs/{job_id}/recommendation-jobs",
@@ -1109,12 +1291,17 @@ def test_submit_recommendation_job_idempotent() -> None:
 
 def test_get_recommendation_job_completed() -> None:
     """AC2: GET returns status=completed, result.topics non-empty."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             artifact_id = await _upload_artifact(client, assignment_id)
-            job_id = await _submit_approve_and_get_job_id(client, assignment_id, artifact_id)
+            job_id = await _submit_approve_and_get_job_id(
+                client, assignment_id, artifact_id
+            )
 
             submit_resp = await client.post(
                 f"/grading/assignments/{assignment_id}/grading-jobs/{job_id}/recommendation-jobs",
@@ -1141,12 +1328,17 @@ def test_get_recommendation_job_completed() -> None:
 
 def test_get_recommendation_job_is_confirmed_field() -> None:
     """AC5+6: is_confirmed false before confirm, true after confirm."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             artifact_id = await _upload_artifact(client, assignment_id)
-            job_id = await _submit_approve_and_get_job_id(client, assignment_id, artifact_id)
+            job_id = await _submit_approve_and_get_job_id(
+                client, assignment_id, artifact_id
+            )
 
             submit_resp = await client.post(
                 f"/grading/assignments/{assignment_id}/grading-jobs/{job_id}/recommendation-jobs",
@@ -1163,7 +1355,11 @@ def test_get_recommendation_job_is_confirmed_field() -> None:
             await client.post(
                 f"/grading/assignments/{assignment_id}/grading-jobs/{job_id}/recommendation-jobs/{rec_job_id}/confirm",
                 headers=_teacher_headers(),
-                json={"topics": [{"topic": "Content Accuracy", "suggestion": "Review chapter 3."}]},
+                json={
+                    "topics": [
+                        {"topic": "Content Accuracy", "suggestion": "Review chapter 3."}
+                    ]
+                },
             )
 
             resp = await client.get(
@@ -1177,12 +1373,17 @@ def test_get_recommendation_job_is_confirmed_field() -> None:
 
 def test_confirm_recommendations_success() -> None:
     """AC4: 200, confirmed_by==usr_teacher_1, topics list present."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             artifact_id = await _upload_artifact(client, assignment_id)
-            job_id = await _submit_approve_and_get_job_id(client, assignment_id, artifact_id)
+            job_id = await _submit_approve_and_get_job_id(
+                client, assignment_id, artifact_id
+            )
 
             submit_resp = await client.post(
                 f"/grading/assignments/{assignment_id}/grading-jobs/{job_id}/recommendation-jobs",
@@ -1193,7 +1394,11 @@ def test_confirm_recommendations_success() -> None:
             resp = await client.post(
                 f"/grading/assignments/{assignment_id}/grading-jobs/{job_id}/recommendation-jobs/{rec_job_id}/confirm",
                 headers=_teacher_headers(),
-                json={"topics": [{"topic": "Content Accuracy", "suggestion": "Review chapter 3."}]},
+                json={
+                    "topics": [
+                        {"topic": "Content Accuracy", "suggestion": "Review chapter 3."}
+                    ]
+                },
             )
             assert resp.status_code == 200
             body = resp.json()
@@ -1208,15 +1413,20 @@ def test_confirm_recommendations_success() -> None:
 
 def test_confirm_recommendations_not_completed_conflict() -> None:
     """AC4: 409 when rec_job not yet processed (pending status)."""
+
     async def scenario() -> None:
         from app.domains.grading.router import _grading_service
 
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             artifact_id = await _upload_artifact(client, assignment_id)
             # Submit and approve grading job
-            job_id = await _submit_approve_and_get_job_id(client, assignment_id, artifact_id)
+            job_id = await _submit_approve_and_get_job_id(
+                client, assignment_id, artifact_id
+            )
 
             # Create a recommendation job record directly in pending state (bypass background processing)
             # by injecting via the repository before the POST hits the router
@@ -1243,12 +1453,17 @@ def test_confirm_recommendations_not_completed_conflict() -> None:
 
 def test_get_confirmed_recommendations_success() -> None:
     """AC5: GET .../confirm returns the confirmed recommendation record."""
+
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             artifact_id = await _upload_artifact(client, assignment_id)
-            job_id = await _submit_approve_and_get_job_id(client, assignment_id, artifact_id)
+            job_id = await _submit_approve_and_get_job_id(
+                client, assignment_id, artifact_id
+            )
 
             submit_resp = await client.post(
                 f"/grading/assignments/{assignment_id}/grading-jobs/{job_id}/recommendation-jobs",
@@ -1259,7 +1474,11 @@ def test_get_confirmed_recommendations_success() -> None:
             await client.post(
                 f"/grading/assignments/{assignment_id}/grading-jobs/{job_id}/recommendation-jobs/{rec_job_id}/confirm",
                 headers=_teacher_headers(),
-                json={"topics": [{"topic": "Content Accuracy", "suggestion": "Review chapter 3."}]},
+                json={
+                    "topics": [
+                        {"topic": "Content Accuracy", "suggestion": "Review chapter 3."}
+                    ]
+                },
             )
 
             resp = await client.get(
@@ -1278,10 +1497,14 @@ def test_get_confirmed_recommendations_success() -> None:
 def test_get_confirmed_recommendations_forbidden_when_not_confirmed() -> None:
     async def scenario() -> None:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
             assignment_id = await _create_assignment(client)
             artifact_id = await _upload_artifact(client, assignment_id)
-            job_id = await _submit_approve_and_get_job_id(client, assignment_id, artifact_id)
+            job_id = await _submit_approve_and_get_job_id(
+                client, assignment_id, artifact_id
+            )
 
             submit_resp = await client.post(
                 f"/grading/assignments/{assignment_id}/grading-jobs/{job_id}/recommendation-jobs",
