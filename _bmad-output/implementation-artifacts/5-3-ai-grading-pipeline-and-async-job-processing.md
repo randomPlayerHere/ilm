@@ -128,8 +128,8 @@ So that I can review AI-suggested grades instead of grading from scratch.
 
 ### Review Follow-ups (AI)
 
-- [ ] [AI-Review][High] Story scope mismatch: backend grading files were modified while story claims mobile-only implementation — these are Stories 5.1/5.2 files staged but not committed; commit them separately before 5.3 [apps/api/app/domains/grading/service.py:1]
-- [ ] [AI-Review][High] "no backend changes — backend untouched" is misleading in current git state; resolved once 5.1/5.2 backend work is committed separately [ _bmad-output/implementation-artifacts/5-3-ai-grading-pipeline-and-async-job-processing.md:127]
+- [x] [AI-Review][High] Story scope mismatch: backend grading files were modified while story claims mobile-only implementation — RESOLVED: 5.1/5.2 backend committed separately ("epic 5.1/5.2: AI grading service backend and contracts")
+- [x] [AI-Review][High] "no backend changes — backend untouched" is misleading in git state — RESOLVED: commits now cleanly separated; 5.3 commit is mobile-only
 - [x] [AI-Review][Medium] Batch header guarded for both params — FIXED: grading.tsx now requires `batchTotal && batchIndex` [apps/mobile/app/(teacher)/grading.tsx]
 - [x] [AI-Review][Medium] Missing `classId`/`studentId` runtime guard — FIXED: params typed optional; missingParams overrides status/error display [apps/mobile/app/(teacher)/grading.tsx]
 - [x] [AI-Review][Medium] Story file list incomplete — FIXED: added babel.config.js, app.config.ts, grading.ts contract, index.ts
