@@ -5,9 +5,11 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import type { GradingJobWithResultResponse } from "@ilm/contracts";
+import type { GradingReviewControls } from "../hooks/useGradingReview";
 import { colors, fonts, fontWeights, radii } from "@ilm/design-tokens";
 
 interface GradingCardProps {
@@ -15,6 +17,7 @@ interface GradingCardProps {
   result: GradingJobWithResultResponse | null;
   photoUri: string | null;
   error: string | null;
+  reviewControls?: GradingReviewControls | null;
 }
 
 const CONFIDENCE_COLORS: Record<string, string> = {
@@ -44,7 +47,7 @@ function SkeletonBox({ style }: { style?: object }) {
   );
 }
 
-export function GradingCard({ status, result, photoUri, error }: GradingCardProps) {
+export function GradingCard({ status, result, photoUri, error, reviewControls }: GradingCardProps) {
   const [rubricExpanded, setRubricExpanded] = useState(false);
 
   if (status === "uploading" || status === "processing") {
@@ -85,6 +88,9 @@ export function GradingCard({ status, result, photoUri, error }: GradingCardProp
   const confidenceColor = CONFIDENCE_COLORS[confidence_level] ?? colors.confidenceMedium;
   const confidenceLabel =
     confidence_level === "high" ? "High" : confidence_level === "medium" ? "Medium" : "Low";
+  const showConfidenceNote = confidence_level === "medium" || confidence_level === "low";
+
+  const hasReviewControls = reviewControls != null;
 
   return (
     <View style={styles.card}>
@@ -95,14 +101,75 @@ export function GradingCard({ status, result, photoUri, error }: GradingCardProp
           <View style={[styles.thumbnail, styles.thumbnailPlaceholder]} />
         )}
         <View style={styles.scoreColumn}>
-          <Text style={styles.scoreText}>{proposed_score}</Text>
+          {hasReviewControls ? (
+            <View style={styles.scoreEditRow}>
+              <Pressable
+                onPress={reviewControls.decrement}
+                accessibilityRole="button"
+                accessibilityLabel="Decrease score"
+                style={styles.scoreButton}
+                hitSlop={8}
+              >
+                <Text style={styles.scoreButtonText}>−</Text>
+              </Pressable>
+              <TextInput
+                style={styles.scoreInput}
+                value={reviewControls.scoreInputText}
+                onChangeText={reviewControls.setScore}
+                keyboardType="number-pad"
+                maxLength={3}
+                accessibilityRole="spinbutton"
+                accessibilityLabel="Score value"
+                accessibilityValue={{ min: 0, max: 100, now: reviewControls.scoreValue }}
+              />
+              <Text style={styles.scoreDivider}>/100</Text>
+              <Pressable
+                onPress={reviewControls.increment}
+                accessibilityRole="button"
+                accessibilityLabel="Increase score"
+                style={styles.scoreButton}
+                hitSlop={8}
+              >
+                <Text style={styles.scoreButtonText}>+</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Text style={styles.scoreText}>{proposed_score}</Text>
+          )}
           <View style={[styles.confidenceBadge, { backgroundColor: confidenceColor }]}>
             <Text style={styles.confidenceBadgeText}>{confidenceLabel}</Text>
           </View>
+          {showConfidenceNote ? (
+            <Text style={styles.confidenceNote}>
+              AI is less certain about this one — please review carefully
+            </Text>
+          ) : null}
         </View>
       </View>
 
-      <Text style={styles.feedbackText}>{draft_feedback}</Text>
+      {hasReviewControls ? (
+        <View style={styles.feedbackEditBlock}>
+          <TextInput
+            style={styles.feedbackInput}
+            value={reviewControls.feedbackValue}
+            onChangeText={reviewControls.setFeedback}
+            multiline
+            accessibilityRole="none"
+            accessibilityLabel="Feedback text"
+          />
+          <Pressable
+            onPress={reviewControls.undoFeedback}
+            accessibilityRole="button"
+            accessibilityLabel="Undo feedback to AI original"
+            style={styles.undoButton}
+            hitSlop={8}
+          >
+            <Text style={styles.undoButtonText}>Undo to AI draft</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <Text style={styles.feedbackText}>{draft_feedback}</Text>
+      )}
 
       {rubric_mapping && Object.keys(rubric_mapping).length > 0 ? (
         <View style={styles.rubricSection}>
@@ -197,6 +264,42 @@ const styles = StyleSheet.create({
     fontWeight: fontWeights.bold,
     color: colors.textPrimary,
   },
+  scoreEditRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  scoreButton: {
+    width: 36,
+    height: 36,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surfaceSecondary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scoreButtonText: {
+    fontSize: 22,
+    fontFamily: fonts.body,
+    fontWeight: fontWeights.semibold,
+    color: colors.textPrimary,
+    lineHeight: 26,
+  },
+  scoreInput: {
+    fontSize: 24,
+    fontFamily: fonts.heading,
+    fontWeight: fontWeights.bold,
+    color: colors.textPrimary,
+    minWidth: 48,
+    textAlign: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderFocus,
+    paddingVertical: 2,
+  },
+  scoreDivider: {
+    fontSize: 16,
+    fontFamily: fonts.body,
+    color: colors.textSecondary,
+  },
   confidenceBadge: {
     alignSelf: "flex-start",
     paddingHorizontal: 10,
@@ -209,11 +312,45 @@ const styles = StyleSheet.create({
     fontWeight: fontWeights.semibold,
     color: colors.textInverse,
   },
+  confidenceNote: {
+    fontSize: 12,
+    fontFamily: fonts.body,
+    color: colors.textSecondary,
+    fontStyle: "italic",
+  },
   feedbackText: {
     fontSize: 15,
     fontFamily: fonts.body,
     color: colors.textSecondary,
     lineHeight: 22,
+  },
+  feedbackEditBlock: {
+    gap: 6,
+  },
+  feedbackInput: {
+    fontSize: 15,
+    fontFamily: fonts.body,
+    color: colors.textSecondary,
+    lineHeight: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    padding: 8,
+    minHeight: 80,
+    textAlignVertical: "top",
+  },
+  undoButton: {
+    alignSelf: "flex-end",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    minHeight: 44,
+    justifyContent: "center",
+  },
+  undoButtonText: {
+    fontSize: 13,
+    fontFamily: fonts.body,
+    fontWeight: fontWeights.medium,
+    color: colors.primary,
   },
   rubricSection: {
     borderTopWidth: 1,

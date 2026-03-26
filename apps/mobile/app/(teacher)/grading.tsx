@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { colors, fonts, fontWeights } from "@ilm/design-tokens";
 import { GradingCard } from "../../src/features/grading/components/GradingCard";
 import { useGradingJob } from "../../src/features/grading/hooks/useGradingJob";
+import { useGradingReview } from "../../src/features/grading/hooks/useGradingReview";
 
 export default function GradingScreen() {
   const router = useRouter();
@@ -29,6 +30,11 @@ export default function GradingScreen() {
       : hookStatus;
   const error = missingParams ? 'Missing assignment context — please try again.' : hookError;
 
+  // Review controls are only active when grading is completed and result is available
+  const reviewControls = useGradingReview(
+    status === 'completed' && result?.result != null ? result : null,
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       {batchTotal && batchIndex ? (
@@ -45,6 +51,7 @@ export default function GradingScreen() {
           result={result}
           photoUri={photoUri}
           error={error}
+          reviewControls={reviewControls}
         />
       </View>
 
