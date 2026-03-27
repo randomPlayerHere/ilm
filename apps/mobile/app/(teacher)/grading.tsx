@@ -8,23 +8,26 @@ import { GradingCard } from "../../src/features/grading/components/GradingCard";
 import { useGradingJob } from "../../src/features/grading/hooks/useGradingJob";
 import { useGradingReview } from "../../src/features/grading/hooks/useGradingReview";
 import { useGradeApproval } from "../../src/features/grading/hooks/useGradeApproval";
+import { useManualGrading } from "../../src/features/grading/hooks/useManualGrading";
 
 export default function GradingScreen() {
   const router = useRouter();
-  const { classId, studentId, batchIndex, batchTotal } = useLocalSearchParams<{
+  const { classId, studentId, batchIndex, batchTotal, assignmentId } = useLocalSearchParams<{
     classId?: string;
     studentId?: string;
     batchIndex?: string;
     batchTotal?: string;
+    assignmentId?: string;
   }>();
 
   const startedAtRef = useRef(Date.now());
 
   // Hook must be called unconditionally — pass empty strings if params missing;
   // missingParams overrides the display status below so no bad request is acted on.
-  const { status: hookStatus, result, error: hookError, photoUri } = useGradingJob(
+  const { status: hookStatus, result, error: hookError, photoUri, retrying } = useGradingJob(
     classId ?? '',
     studentId ?? '',
+    assignmentId,
   );
 
   const missingParams = !classId || !studentId;
@@ -45,6 +48,32 @@ export default function GradingScreen() {
     status === 'completed' && result?.result != null ? result : null,
     reviewControls,
   );
+
+  // Processing hint for retry indicator
+  const processingHint = status === 'processing' && retrying ? 'Still processing...' : null;
+
+  // Manual grading hook — only active when failed and result is available
+  const manualGradingControls = useManualGrading(
+    status === 'failed' && result != null ? result : null,
+  );
+
+  const [isManualGrading, setIsManualGrading] = useState(false);
+
+  // Reset isManualGrading when job changes (e.g. after retake)
+  useEffect(() => {
+    setIsManualGrading(false);
+  }, [result?.job_id]);
+
+  function handleGradeManually() {
+    setIsManualGrading(true);
+  }
+
+  function handleRetakePhoto() {
+    router.replace({
+      pathname: '/(teacher)/camera',
+      params: { classId: classId ?? '', studentId: studentId ?? '', assignmentId: result?.assignment_id ?? '' },
+    });
+  }
 
   const [batchComplete, setBatchComplete] = useState(false);
   const [approvedScores, setApprovedScores] = useState<number[]>([]);
@@ -142,6 +171,10 @@ export default function GradingScreen() {
           error={error}
           reviewControls={reviewControls}
           approvalControls={approvalControls}
+          processingHint={processingHint}
+          onRetakePhoto={status === 'failed' && !isManualGrading ? handleRetakePhoto : undefined}
+          onGradeManually={status === 'failed' && !isManualGrading ? handleGradeManually : undefined}
+          manualGradingControls={isManualGrading ? manualGradingControls : null}
         />
       </View>
 

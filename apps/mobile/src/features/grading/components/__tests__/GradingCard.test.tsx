@@ -4,6 +4,7 @@ import { GradingCard } from "../GradingCard";
 import type { GradingJobWithResultResponse } from "@ilm/contracts";
 import type { GradingReviewControls } from "../../hooks/useGradingReview";
 import type { GradeApprovalControls } from "../../hooks/useGradeApproval";
+import type { ManualGradingControls } from "../../hooks/useManualGrading";
 
 // Suppress Animated warning about useNativeDriver in test env
 jest.mock("react-native/Libraries/Animated/NativeAnimatedHelper", () => ({}), { virtual: true });
@@ -16,6 +17,9 @@ const COMPLETED_RESULT: GradingJobWithResultResponse = {
   attempt_count: 1,
   submitted_at: "2026-03-26T00:00:00Z",
   completed_at: "2026-03-26T00:00:01Z",
+  failure_code: null,
+  failure_reason: null,
+  rubric_criteria: [],
   result: {
     proposed_score: "85/100",
     rubric_mapping: { Clarity: "Excellent", Logic: "Good" },
@@ -28,6 +32,25 @@ const COMPLETED_RESULT: GradingJobWithResultResponse = {
   },
   is_approved: false,
 };
+
+function makeManualGradingControls(overrides?: Partial<ManualGradingControls>): ManualGradingControls {
+  return {
+    scoreValue: 0,
+    scoreInputText: "0",
+    feedbackValue: "",
+    submitState: "idle",
+    submitError: null,
+    isSubmitting: false,
+    isSubmitted: false,
+    rubricCriteria: [],
+    setScore: jest.fn(),
+    setFeedback: jest.fn(),
+    increment: jest.fn(),
+    decrement: jest.fn(),
+    submit: jest.fn(),
+    ...overrides,
+  };
+}
 
 function makeApprovalControls(overrides?: Partial<GradeApprovalControls>): GradeApprovalControls {
   return {
@@ -448,6 +471,286 @@ describe("GradingCard", () => {
       );
       fireEvent.press(screen.getByRole("button", { name: "Approve grade" }));
       expect(controls.approve).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("processing hint", () => {
+    it("renders 'Still processing...' when status='processing' and processingHint provided", () => {
+      render(
+        <GradingCard
+          status="processing"
+          result={null}
+          photoUri={null}
+          error={null}
+          processingHint="Still processing..."
+        />,
+      );
+      expect(screen.getByText("Still processing...")).toBeTruthy();
+    });
+
+    it("does not render hint text when processingHint is null", () => {
+      render(
+        <GradingCard
+          status="processing"
+          result={null}
+          photoUri={null}
+          error={null}
+          processingHint={null}
+        />,
+      );
+      expect(screen.queryByText("Still processing...")).toBeNull();
+    });
+  });
+
+  describe("failed state — fallback buttons (no manualGradingControls)", () => {
+    it("renders 'Retake Photo' button when status='failed' and onRetakePhoto provided", () => {
+      render(
+        <GradingCard
+          status="failed"
+          result={null}
+          photoUri={null}
+          error="AI failed"
+          onRetakePhoto={jest.fn()}
+        />,
+      );
+      expect(screen.getByRole("button", { name: "Retake Photo" })).toBeTruthy();
+    });
+
+    it("renders 'Grade Manually' button when status='failed' and onGradeManually provided", () => {
+      render(
+        <GradingCard
+          status="failed"
+          result={null}
+          photoUri={null}
+          error="AI failed"
+          onGradeManually={jest.fn()}
+        />,
+      );
+      expect(screen.getByRole("button", { name: "Grade Manually" })).toBeTruthy();
+    });
+
+    it("neither button renders when callbacks are undefined", () => {
+      render(
+        <GradingCard status="failed" result={null} photoUri={null} error="AI failed" />,
+      );
+      expect(screen.queryByRole("button", { name: "Retake Photo" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Grade Manually" })).toBeNull();
+    });
+
+    it("tapping 'Retake Photo' calls onRetakePhoto", () => {
+      const onRetakePhoto = jest.fn();
+      render(
+        <GradingCard
+          status="failed"
+          result={null}
+          photoUri={null}
+          error="AI failed"
+          onRetakePhoto={onRetakePhoto}
+        />,
+      );
+      fireEvent.press(screen.getByRole("button", { name: "Retake Photo" }));
+      expect(onRetakePhoto).toHaveBeenCalledTimes(1);
+    });
+
+    it("tapping 'Grade Manually' calls onGradeManually", () => {
+      const onGradeManually = jest.fn();
+      render(
+        <GradingCard
+          status="failed"
+          result={null}
+          photoUri={null}
+          error="AI failed"
+          onGradeManually={onGradeManually}
+        />,
+      );
+      fireEvent.press(screen.getByRole("button", { name: "Grade Manually" }));
+      expect(onGradeManually).toHaveBeenCalledTimes(1);
+    });
+
+    it("failure reason error text still renders alongside buttons", () => {
+      render(
+        <GradingCard
+          status="failed"
+          result={null}
+          photoUri={null}
+          error="Handwriting unclear"
+          onRetakePhoto={jest.fn()}
+          onGradeManually={jest.fn()}
+        />,
+      );
+      expect(screen.getByText("Handwriting unclear")).toBeTruthy();
+    });
+  });
+
+  describe("failed state — manual grading form (manualGradingControls present)", () => {
+    it("renders 'Grade Manually' heading", () => {
+      render(
+        <GradingCard
+          status="failed"
+          result={null}
+          photoUri={null}
+          error={null}
+          manualGradingControls={makeManualGradingControls()}
+        />,
+      );
+      expect(screen.getByText("Grade Manually")).toBeTruthy();
+    });
+
+    it("score input renders with scoreInputText value", () => {
+      render(
+        <GradingCard
+          status="failed"
+          result={null}
+          photoUri={null}
+          error={null}
+          manualGradingControls={makeManualGradingControls({ scoreInputText: "75" })}
+        />,
+      );
+      expect(screen.getByDisplayValue("75")).toBeTruthy();
+    });
+
+    it("'+' button calls increment; '-' button calls decrement", () => {
+      const controls = makeManualGradingControls();
+      render(
+        <GradingCard
+          status="failed"
+          result={null}
+          photoUri={null}
+          error={null}
+          manualGradingControls={controls}
+        />,
+      );
+      fireEvent.press(screen.getByRole("button", { name: "Increase manual score" }));
+      expect(controls.increment).toHaveBeenCalledTimes(1);
+      fireEvent.press(screen.getByRole("button", { name: "Decrease manual score" }));
+      expect(controls.decrement).toHaveBeenCalledTimes(1);
+    });
+
+    it("feedback input renders with feedbackValue", () => {
+      render(
+        <GradingCard
+          status="failed"
+          result={null}
+          photoUri={null}
+          error={null}
+          manualGradingControls={makeManualGradingControls({ feedbackValue: "Good effort." })}
+        />,
+      );
+      expect(screen.getByDisplayValue("Good effort.")).toBeTruthy();
+    });
+
+    it("feedback input change calls setFeedback", () => {
+      const controls = makeManualGradingControls();
+      render(
+        <GradingCard
+          status="failed"
+          result={null}
+          photoUri={null}
+          error={null}
+          manualGradingControls={controls}
+        />,
+      );
+      fireEvent.changeText(screen.getByLabelText("Manual feedback"), "New feedback.");
+      expect(controls.setFeedback).toHaveBeenCalledWith("New feedback.");
+    });
+
+    it("rubric criteria section renders when rubricCriteria.length > 0", () => {
+      render(
+        <GradingCard
+          status="failed"
+          result={null}
+          photoUri={null}
+          error={null}
+          manualGradingControls={makeManualGradingControls({
+            rubricCriteria: [{ criterion: "Clarity", description: "Clear reasoning" }],
+          })}
+        />,
+      );
+      expect(screen.getByText(/Rubric criteria/)).toBeTruthy();
+    });
+
+    it("rubric criteria section hidden when rubricCriteria is empty", () => {
+      render(
+        <GradingCard
+          status="failed"
+          result={null}
+          photoUri={null}
+          error={null}
+          manualGradingControls={makeManualGradingControls({ rubricCriteria: [] })}
+        />,
+      );
+      expect(screen.queryByText(/Rubric criteria/)).toBeNull();
+    });
+
+    it("'Submit manual grade' button renders when isSubmitted=false", () => {
+      render(
+        <GradingCard
+          status="failed"
+          result={null}
+          photoUri={null}
+          error={null}
+          manualGradingControls={makeManualGradingControls({ isSubmitted: false })}
+        />,
+      );
+      expect(screen.getByRole("button", { name: "Submit manual grade" })).toBeTruthy();
+    });
+
+    it("shows 'Submitting...' text and button disabled when isSubmitting=true", () => {
+      render(
+        <GradingCard
+          status="failed"
+          result={null}
+          photoUri={null}
+          error={null}
+          manualGradingControls={makeManualGradingControls({ isSubmitting: true })}
+        />,
+      );
+      expect(screen.getByText("Submitting...")).toBeTruthy();
+      const submitBtn = screen.getByRole("button", { name: "Submit manual grade" });
+      expect(submitBtn.props.accessibilityState?.disabled).toBe(true);
+    });
+
+    it("'Grade submitted ✓' text renders when isSubmitted=true; submit button absent", () => {
+      render(
+        <GradingCard
+          status="failed"
+          result={null}
+          photoUri={null}
+          error={null}
+          manualGradingControls={makeManualGradingControls({ isSubmitted: true })}
+        />,
+      );
+      expect(screen.getByText("Grade submitted ✓")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Submit manual grade" })).toBeNull();
+    });
+
+    it("submitError text renders when set", () => {
+      render(
+        <GradingCard
+          status="failed"
+          result={null}
+          photoUri={null}
+          error={null}
+          manualGradingControls={makeManualGradingControls({ submitError: "Grade submission failed" })}
+        />,
+      );
+      expect(screen.getByText("Grade submission failed")).toBeTruthy();
+    });
+
+    it("'Retake Photo' / 'Grade Manually' buttons do NOT render when manualGradingControls is present", () => {
+      render(
+        <GradingCard
+          status="failed"
+          result={null}
+          photoUri={null}
+          error={null}
+          onRetakePhoto={jest.fn()}
+          onGradeManually={jest.fn()}
+          manualGradingControls={makeManualGradingControls()}
+        />,
+      );
+      expect(screen.queryByRole("button", { name: "Retake Photo" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Grade Manually" })).toBeNull();
     });
   });
 });

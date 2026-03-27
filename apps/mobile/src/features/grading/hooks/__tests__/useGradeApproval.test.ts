@@ -21,6 +21,9 @@ const makeResult = (overrides: Partial<GradingJobWithResultResponse> = {}): Grad
   submitted_at: '2026-03-26T00:00:00Z',
   completed_at: '2026-03-26T00:00:01Z',
   is_approved: false,
+  failure_code: null,
+  failure_reason: null,
+  rubric_criteria: [],
   result: {
     proposed_score: '85/100',
     draft_feedback: 'Good work.',

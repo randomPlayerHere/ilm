@@ -11,6 +11,7 @@ import {
 import type { GradingJobWithResultResponse } from "@ilm/contracts";
 import type { GradingReviewControls } from "../hooks/useGradingReview";
 import type { GradeApprovalControls } from "../hooks/useGradeApproval";
+import type { ManualGradingControls } from "../hooks/useManualGrading";
 import { colors, fonts, fontWeights, radii } from "@ilm/design-tokens";
 
 interface GradingCardProps {
@@ -20,6 +21,10 @@ interface GradingCardProps {
   error: string | null;
   reviewControls?: GradingReviewControls | null;
   approvalControls?: GradeApprovalControls | null;
+  processingHint?: string | null;
+  onRetakePhoto?: () => void;
+  onGradeManually?: () => void;
+  manualGradingControls?: ManualGradingControls | null;
 }
 
 const CONFIDENCE_COLORS: Record<string, string> = {
@@ -54,8 +59,9 @@ function SkeletonBox({ style }: { style?: object }) {
   );
 }
 
-export function GradingCard({ status, result, photoUri, error, reviewControls, approvalControls }: GradingCardProps) {
+export function GradingCard({ status, result, photoUri, error, reviewControls, approvalControls, processingHint, onRetakePhoto, onGradeManually, manualGradingControls }: GradingCardProps) {
   const [rubricExpanded, setRubricExpanded] = useState(false);
+  const [manualRubricExpanded, setManualRubricExpanded] = useState(false);
   const approvedFadeAnim = useRef(new Animated.Value(approvalControls?.isApproved ? 1 : 0)).current;
   const prevIsApprovedRef = useRef(approvalControls?.isApproved ?? false);
   const shouldAnimate = process.env.NODE_ENV !== "test";
@@ -81,15 +87,141 @@ export function GradingCard({ status, result, photoUri, error, reviewControls, a
         </View>
         <SkeletonBox style={styles.skeletonFeedback} />
         <SkeletonBox style={styles.skeletonFeedbackLine2} />
+        {processingHint ? (
+          <Text style={styles.processingHint}>{processingHint}</Text>
+        ) : null}
       </View>
     );
   }
 
   if (status === "failed") {
+    if (manualGradingControls != null) {
+      // Manual grading form
+      const { scoreValue, scoreInputText, feedbackValue, isSubmitting, isSubmitted, submitError: manualSubmitError, rubricCriteria, increment: manualIncrement, decrement: manualDecrement, setScore: manualSetScore, setFeedback: manualSetFeedback, submit } = manualGradingControls;
+      return (
+        <View style={styles.card}>
+          <Text style={styles.manualHeading}>Grade Manually</Text>
+          {photoUri ? (
+            <Image source={{ uri: photoUri }} style={styles.thumbnail} accessibilityLabel="Student work" />
+          ) : null}
+          <View style={styles.scoreEditRow}>
+            <Pressable
+              onPress={manualDecrement}
+              accessibilityRole="button"
+              accessibilityLabel="Decrease manual score"
+              style={styles.scoreButton}
+              hitSlop={8}
+            >
+              <Text style={styles.scoreButtonText}>−</Text>
+            </Pressable>
+            <TextInput
+              style={styles.scoreInput}
+              value={scoreInputText}
+              onChangeText={manualSetScore}
+              keyboardType="number-pad"
+              maxLength={3}
+              accessibilityLabel="Manual score"
+              accessibilityValue={{ min: 0, max: 100, now: scoreValue }}
+            />
+            <Text style={styles.scoreDivider}>/100</Text>
+            <Pressable
+              onPress={manualIncrement}
+              accessibilityRole="button"
+              accessibilityLabel="Increase manual score"
+              style={styles.scoreButton}
+              hitSlop={8}
+            >
+              <Text style={styles.scoreButtonText}>+</Text>
+            </Pressable>
+          </View>
+          <TextInput
+            style={styles.feedbackInput}
+            value={feedbackValue}
+            onChangeText={manualSetFeedback}
+            multiline
+            accessibilityLabel="Manual feedback"
+            placeholder="Enter feedback..."
+          />
+          {rubricCriteria.length > 0 ? (
+            <View style={styles.rubricSection}>
+              <Pressable
+                onPress={() => setManualRubricExpanded((v) => !v)}
+                accessibilityRole="button"
+                style={styles.rubricToggle}
+              >
+                <Text style={styles.rubricToggleText}>
+                  Rubric criteria {manualRubricExpanded ? "▲" : "▼"}
+                </Text>
+              </Pressable>
+              {manualRubricExpanded ? (
+                <View style={styles.rubricList}>
+                  {rubricCriteria.map((item) => (
+                    <View key={item.criterion} style={styles.rubricRow}>
+                      <Text style={styles.rubricCriterion}>{item.criterion}</Text>
+                      {item.description ? (
+                        <Text style={styles.rubricRating}>{item.description}</Text>
+                      ) : null}
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+          {manualSubmitError ? (
+            <Text style={styles.approvalErrorText}>{manualSubmitError}</Text>
+          ) : null}
+          {isSubmitted ? (
+            <Text style={styles.submittedText}>Grade submitted ✓</Text>
+          ) : (
+            <Pressable
+              onPress={submit}
+              accessibilityRole="button"
+              accessibilityLabel="Submit manual grade"
+              accessibilityState={{ disabled: isSubmitting }}
+              style={[styles.submitButton, isSubmitting && styles.approveButtonDisabled]}
+              disabled={isSubmitting}
+              hitSlop={8}
+            >
+              <Text style={styles.approveButtonText}>
+                {isSubmitting ? "Submitting..." : "Submit Grade"}
+              </Text>
+            </Pressable>
+          )}
+        </View>
+      );
+    }
+
+    // Default failed state with fallback action buttons
     return (
       <View style={styles.card}>
         <Text style={styles.errorTitle}>Couldn't analyze this one</Text>
         {error ? <Text style={styles.errorDetail}>{error}</Text> : null}
+        {(onRetakePhoto || onGradeManually) ? (
+          <View style={styles.failedActions}>
+            {onRetakePhoto ? (
+              <Pressable
+                onPress={onRetakePhoto}
+                accessibilityRole="button"
+                accessibilityLabel="Retake Photo"
+                style={styles.retakeButton}
+                hitSlop={8}
+              >
+                <Text style={styles.retakeButtonText}>Retake Photo</Text>
+              </Pressable>
+            ) : null}
+            {onGradeManually ? (
+              <Pressable
+                onPress={onGradeManually}
+                accessibilityRole="button"
+                accessibilityLabel="Grade Manually"
+                style={styles.gradeManuallyButton}
+                hitSlop={8}
+              >
+                <Text style={styles.gradeManuallyButtonText}>Grade Manually</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
       </View>
     );
   }
@@ -478,5 +610,71 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: fonts.body,
     color: colors.error,
+  },
+  processingHint: {
+    fontSize: 13,
+    fontFamily: fonts.body,
+    color: colors.textSecondary,
+    textAlign: "center",
+    fontStyle: "italic",
+  },
+  failedActions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 4,
+  },
+  retakeButton: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+  },
+  retakeButtonText: {
+    fontSize: 15,
+    fontFamily: fonts.body,
+    fontWeight: fontWeights.medium,
+    color: colors.primary,
+  },
+  gradeManuallyButton: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: radii.sm,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+  },
+  gradeManuallyButtonText: {
+    fontSize: 15,
+    fontFamily: fonts.body,
+    fontWeight: fontWeights.semibold,
+    color: colors.textInverse,
+  },
+  manualHeading: {
+    fontSize: 17,
+    fontFamily: fonts.heading,
+    fontWeight: fontWeights.semibold,
+    color: colors.textPrimary,
+    textAlign: "center",
+  },
+  submitButton: {
+    backgroundColor: colors.primary,
+    minHeight: 44,
+    borderRadius: radii.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+  },
+  submittedText: {
+    fontSize: 16,
+    fontFamily: fonts.body,
+    fontWeight: fontWeights.semibold,
+    color: colors.success,
+    textAlign: "center",
+    paddingVertical: 8,
   },
 });
