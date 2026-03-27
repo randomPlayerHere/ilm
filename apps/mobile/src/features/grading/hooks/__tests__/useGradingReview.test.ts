@@ -168,5 +168,35 @@ describe("useGradingReview", () => {
       expect(result.current?.scoreValue).toBe(78);
       expect(result.current?.feedbackValue).toBe("Nice work.");
     });
+
+    it("re-initializes when a different completed result arrives", () => {
+      let resultProp: GradingJobWithResultResponse | null = makeResult("78/100", "First draft.");
+      const { result, rerender } = renderHook(() => useGradingReview(resultProp));
+
+      expect(result.current?.scoreValue).toBe(78);
+      expect(result.current?.feedbackValue).toBe("First draft.");
+
+      act(() => {
+        result.current!.setScore("88");
+        result.current!.setFeedback("Teacher edited.");
+      });
+
+      expect(result.current?.scoreValue).toBe(88);
+      expect(result.current?.feedbackValue).toBe("Teacher edited.");
+
+      resultProp = {
+        ...makeResult("64/100", "Second draft."),
+        job_id: "job_2",
+        result: {
+          ...makeResult("64/100", "Second draft.").result!,
+          generated_at: "2026-03-27T00:00:02Z",
+        },
+      };
+      rerender({});
+
+      expect(result.current?.scoreValue).toBe(64);
+      expect(result.current?.scoreInputText).toBe("64");
+      expect(result.current?.feedbackValue).toBe("Second draft.");
+    });
   });
 });

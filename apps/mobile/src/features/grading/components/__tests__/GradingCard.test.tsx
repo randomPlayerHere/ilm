@@ -2,6 +2,7 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react-native";
 import { GradingCard } from "../GradingCard";
 import type { GradingJobWithResultResponse } from "@ilm/contracts";
+import type { GradingReviewControls } from "../../hooks/useGradingReview";
 
 // Suppress Animated warning about useNativeDriver in test env
 jest.mock("react-native/Libraries/Animated/NativeAnimatedHelper", () => ({}), { virtual: true });
@@ -27,6 +28,21 @@ const COMPLETED_RESULT: GradingJobWithResultResponse = {
   is_approved: false,
 };
 
+function makeReviewControls(overrides?: Partial<GradingReviewControls>): GradingReviewControls {
+  return {
+    scoreValue: 85,
+    scoreInputText: "85",
+    displayScore: "85/100",
+    feedbackValue: "Great effort shown throughout.",
+    increment: jest.fn(),
+    decrement: jest.fn(),
+    setScore: jest.fn(),
+    setFeedback: jest.fn(),
+    undoFeedback: jest.fn(),
+    ...overrides,
+  };
+}
+
 describe("GradingCard", () => {
   describe("skeleton state (uploading/processing)", () => {
     it("renders without score text when status is uploading", () => {
@@ -44,7 +60,7 @@ describe("GradingCard", () => {
     });
   });
 
-  describe("completed state", () => {
+  describe("completed state — read-only (no reviewControls)", () => {
     it("shows the score when completed", () => {
       render(
         <GradingCard status="completed" result={COMPLETED_RESULT} photoUri="file://test.jpg" error={null} />,
@@ -116,6 +132,35 @@ describe("GradingCard", () => {
       );
       expect(screen.getByText("No grading result available")).toBeTruthy();
     });
+
+    it("does not show confidence note for high confidence", () => {
+      render(
+        <GradingCard status="completed" result={COMPLETED_RESULT} photoUri={null} error={null} />,
+      );
+      expect(screen.queryByText(/please review carefully/)).toBeNull();
+    });
+
+    it("shows confidence note for medium confidence", () => {
+      const medResult: GradingJobWithResultResponse = {
+        ...COMPLETED_RESULT,
+        result: { ...COMPLETED_RESULT.result!, confidence_level: "medium", confidence_score: 0.6 },
+      };
+      render(
+        <GradingCard status="completed" result={medResult} photoUri={null} error={null} />,
+      );
+      expect(screen.getByText(/please review carefully/)).toBeTruthy();
+    });
+
+    it("shows confidence note for low confidence", () => {
+      const lowResult: GradingJobWithResultResponse = {
+        ...COMPLETED_RESULT,
+        result: { ...COMPLETED_RESULT.result!, confidence_level: "low", confidence_score: 0.2 },
+      };
+      render(
+        <GradingCard status="completed" result={lowResult} photoUri={null} error={null} />,
+      );
+      expect(screen.getByText(/please review carefully/)).toBeTruthy();
+    });
   });
 
   describe("failed state", () => {
@@ -125,6 +170,183 @@ describe("GradingCard", () => {
       );
       expect(screen.getByText("Couldn't analyze this one")).toBeTruthy();
       expect(screen.getByText("AI grading failed")).toBeTruthy();
+    });
+  });
+
+  describe("completed state — edit mode (with reviewControls)", () => {
+    it("renders score input with scoreInputText value", () => {
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          reviewControls={makeReviewControls()}
+        />,
+      );
+      expect(screen.getByDisplayValue("85")).toBeTruthy();
+    });
+
+    it("renders /100 label next to score input", () => {
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          reviewControls={makeReviewControls()}
+        />,
+      );
+      expect(screen.getByText("/100")).toBeTruthy();
+    });
+
+    it("calls increment when + button is pressed", () => {
+      const controls = makeReviewControls();
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          reviewControls={controls}
+        />,
+      );
+      fireEvent.press(screen.getByRole("button", { name: "Increase score" }));
+      expect(controls.increment).toHaveBeenCalledTimes(1);
+    });
+
+    it("calls decrement when − button is pressed", () => {
+      const controls = makeReviewControls();
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          reviewControls={controls}
+        />,
+      );
+      fireEvent.press(screen.getByRole("button", { name: "Decrease score" }));
+      expect(controls.decrement).toHaveBeenCalledTimes(1);
+    });
+
+    it("calls setScore when score input changes", () => {
+      const controls = makeReviewControls();
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          reviewControls={controls}
+        />,
+      );
+      fireEvent.changeText(screen.getByDisplayValue("85"), "90");
+      expect(controls.setScore).toHaveBeenCalledWith("90");
+    });
+
+    it("renders feedback TextInput with feedbackValue", () => {
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          reviewControls={makeReviewControls({ feedbackValue: "Edited feedback." })}
+        />,
+      );
+      expect(screen.getByDisplayValue("Edited feedback.")).toBeTruthy();
+    });
+
+    it("calls setFeedback when feedback input changes", () => {
+      const controls = makeReviewControls();
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          reviewControls={controls}
+        />,
+      );
+      fireEvent.changeText(
+        screen.getByDisplayValue("Great effort shown throughout."),
+        "New feedback.",
+      );
+      expect(controls.setFeedback).toHaveBeenCalledWith("New feedback.");
+    });
+
+    it("renders undo button", () => {
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          reviewControls={makeReviewControls()}
+        />,
+      );
+      expect(screen.getByRole("button", { name: "Undo feedback to AI original" })).toBeTruthy();
+    });
+
+    it("calls undoFeedback when undo button is pressed", () => {
+      const controls = makeReviewControls();
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          reviewControls={controls}
+        />,
+      );
+      fireEvent.press(screen.getByRole("button", { name: "Undo feedback to AI original" }));
+      expect(controls.undoFeedback).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows confidence note for medium confidence in edit mode", () => {
+      const medResult: GradingJobWithResultResponse = {
+        ...COMPLETED_RESULT,
+        result: { ...COMPLETED_RESULT.result!, confidence_level: "medium", confidence_score: 0.6 },
+      };
+      render(
+        <GradingCard
+          status="completed"
+          result={medResult}
+          photoUri={null}
+          error={null}
+          reviewControls={makeReviewControls()}
+        />,
+      );
+      expect(screen.getByText(/please review carefully/)).toBeTruthy();
+    });
+
+    it("does not show confidence note for high confidence in edit mode", () => {
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          reviewControls={makeReviewControls()}
+        />,
+      );
+      expect(screen.queryByText(/please review carefully/)).toBeNull();
+    });
+
+    it("rubric toggle still works in edit mode", () => {
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          reviewControls={makeReviewControls()}
+        />,
+      );
+      expect(screen.queryByText("Clarity")).toBeNull();
+      fireEvent.press(screen.getByText(/Rubric breakdown/));
+      expect(screen.getByText("Clarity")).toBeTruthy();
     });
   });
 });

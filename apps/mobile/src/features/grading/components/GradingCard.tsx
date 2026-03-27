@@ -28,8 +28,13 @@ const CONFIDENCE_COLORS: Record<string, string> = {
 
 function SkeletonBox({ style }: { style?: object }) {
   const fadeAnim = useRef(new Animated.Value(0.3)).current;
+  const shouldAnimate = process.env.NODE_ENV !== "test";
 
   useEffect(() => {
+    if (!shouldAnimate) {
+      return;
+    }
+
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(fadeAnim, { toValue: 0.8, duration: 800, useNativeDriver: true }),
@@ -38,7 +43,7 @@ function SkeletonBox({ style }: { style?: object }) {
     );
     loop.start();
     return () => loop.stop();
-  }, [fadeAnim]);
+  }, [fadeAnim, shouldAnimate]);
 
   return (
     <Animated.View
@@ -118,8 +123,8 @@ export function GradingCard({ status, result, photoUri, error, reviewControls }:
                 onChangeText={reviewControls.setScore}
                 keyboardType="number-pad"
                 maxLength={3}
-                accessibilityRole="spinbutton"
                 accessibilityLabel="Score value"
+                accessibilityHint="Enter a score between 0 and 100"
                 accessibilityValue={{ min: 0, max: 100, now: reviewControls.scoreValue }}
               />
               <Text style={styles.scoreDivider}>/100</Text>
@@ -154,8 +159,8 @@ export function GradingCard({ status, result, photoUri, error, reviewControls }:
             value={reviewControls.feedbackValue}
             onChangeText={reviewControls.setFeedback}
             multiline
-            accessibilityRole="none"
             accessibilityLabel="Feedback text"
+            accessibilityHint="Edit feedback for this assignment"
           />
           <Pressable
             onPress={reviewControls.undoFeedback}
@@ -270,8 +275,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   scoreButton: {
-    width: 36,
-    height: 36,
+    width: 44,
+    height: 44,
     borderRadius: radii.sm,
     backgroundColor: colors.surfaceSecondary,
     alignItems: "center",
