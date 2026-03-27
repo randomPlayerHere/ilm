@@ -1,4 +1,5 @@
 import type {
+  GradeApprovalResponse,
   GradingJobResponse,
   GradingJobWithResultResponse,
 } from "@ilm/contracts";
@@ -75,6 +76,35 @@ export async function submitGradingJob(
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     throw new ApiError(String(response.status), body.detail ?? "Submit grading job failed", response.status);
+  }
+  return response.json();
+}
+
+export async function approveGradingJob(
+  assignmentId: string,
+  jobId: string,
+  approvedScore: string,
+  approvedFeedback: string,
+  token: string,
+): Promise<GradeApprovalResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/grading/assignments/${assignmentId}/grading-jobs/${jobId}/approve`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ approved_score: approvedScore, approved_feedback: approvedFeedback }),
+    },
+  );
+  if (response.status === 409) {
+    try { response.body?.cancel(); } catch { /* ignore — body drain is best-effort */ }
+    return {} as GradeApprovalResponse;
+  }
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new ApiError(String(response.status), body.detail ?? "Approve grading job failed", response.status);
   }
   return response.json();
 }

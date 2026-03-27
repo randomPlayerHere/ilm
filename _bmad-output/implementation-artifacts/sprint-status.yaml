@@ -106,7 +106,7 @@ development_status:
   5-2-camera-capture-and-client-side-image-processing: done
   5-3-ai-grading-pipeline-and-async-job-processing: done
   5-4-grading-review-card-and-score-adjustment: done
-  5-5-grade-approval-and-visibility-control: backlog
+  5-5-grade-approval-and-visibility-control: done
   5-6-ai-failure-fallback-and-manual-grading: backlog
   5-7-practice-recommendations: backlog
   5-8-offline-photo-queue-and-auto-upload: backlog

@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import type { GradingJobWithResultResponse } from "@ilm/contracts";
 import type { GradingReviewControls } from "../hooks/useGradingReview";
+import type { GradeApprovalControls } from "../hooks/useGradeApproval";
 import { colors, fonts, fontWeights, radii } from "@ilm/design-tokens";
 
 interface GradingCardProps {
@@ -18,6 +19,7 @@ interface GradingCardProps {
   photoUri: string | null;
   error: string | null;
   reviewControls?: GradingReviewControls | null;
+  approvalControls?: GradeApprovalControls | null;
 }
 
 const CONFIDENCE_COLORS: Record<string, string> = {
@@ -52,8 +54,20 @@ function SkeletonBox({ style }: { style?: object }) {
   );
 }
 
-export function GradingCard({ status, result, photoUri, error, reviewControls }: GradingCardProps) {
+export function GradingCard({ status, result, photoUri, error, reviewControls, approvalControls }: GradingCardProps) {
   const [rubricExpanded, setRubricExpanded] = useState(false);
+  const approvedFadeAnim = useRef(new Animated.Value(approvalControls?.isApproved ? 1 : 0)).current;
+  const prevIsApprovedRef = useRef(approvalControls?.isApproved ?? false);
+  const shouldAnimate = process.env.NODE_ENV !== "test";
+
+  useEffect(() => {
+    const wasApproved = prevIsApprovedRef.current;
+    const isNowApproved = approvalControls?.isApproved ?? false;
+    prevIsApprovedRef.current = isNowApproved;
+    if (isNowApproved && !wasApproved && shouldAnimate) {
+      Animated.timing(approvedFadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+    }
+  }, [approvalControls?.isApproved, approvedFadeAnim, shouldAnimate]);
 
   if (status === "uploading" || status === "processing") {
     return (
@@ -175,6 +189,33 @@ export function GradingCard({ status, result, photoUri, error, reviewControls }:
       ) : (
         <Text style={styles.feedbackText}>{draft_feedback}</Text>
       )}
+
+      {reviewControls != null && approvalControls != null ? (
+        <View style={styles.approvalBlock}>
+          {approvalControls.isApproved ? (
+            <Animated.Text style={[styles.approvedText, { opacity: shouldAnimate ? approvedFadeAnim : 1 }]}>
+              Approved ✓
+            </Animated.Text>
+          ) : (
+            <Pressable
+              onPress={approvalControls.approve}
+              accessibilityRole="button"
+              accessibilityLabel="Approve grade"
+              accessibilityState={{ disabled: approvalControls.isApproving }}
+              style={[styles.approveButton, approvalControls.isApproving && styles.approveButtonDisabled]}
+              disabled={approvalControls.isApproving}
+              hitSlop={8}
+            >
+              <Text style={styles.approveButtonText}>
+                {approvalControls.isApproving ? "Approving..." : "Approve"}
+              </Text>
+            </Pressable>
+          )}
+          {approvalControls.approvalError ? (
+            <Text style={styles.approvalErrorText}>{approvalControls.approvalError}</Text>
+          ) : null}
+        </View>
+      ) : null}
 
       {rubric_mapping && Object.keys(rubric_mapping).length > 0 ? (
         <View style={styles.rubricSection}>
@@ -404,5 +445,38 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     color: colors.textSecondary,
     textAlign: "center",
+  },
+  approvalBlock: {
+    gap: 8,
+  },
+  approveButton: {
+    backgroundColor: colors.primary,
+    minHeight: 44,
+    borderRadius: radii.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+  },
+  approveButtonDisabled: {
+    opacity: 0.6,
+  },
+  approveButtonText: {
+    fontSize: 16,
+    fontFamily: fonts.body,
+    fontWeight: fontWeights.semibold,
+    color: colors.textInverse,
+  },
+  approvedText: {
+    fontSize: 16,
+    fontFamily: fonts.body,
+    fontWeight: fontWeights.semibold,
+    color: colors.success,
+    textAlign: "center",
+    paddingVertical: 8,
+  },
+  approvalErrorText: {
+    fontSize: 13,
+    fontFamily: fonts.body,
+    color: colors.error,
   },
 });

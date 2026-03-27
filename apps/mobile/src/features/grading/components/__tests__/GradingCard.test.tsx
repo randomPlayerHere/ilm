@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react-native";
 import { GradingCard } from "../GradingCard";
 import type { GradingJobWithResultResponse } from "@ilm/contracts";
 import type { GradingReviewControls } from "../../hooks/useGradingReview";
+import type { GradeApprovalControls } from "../../hooks/useGradeApproval";
 
 // Suppress Animated warning about useNativeDriver in test env
 jest.mock("react-native/Libraries/Animated/NativeAnimatedHelper", () => ({}), { virtual: true });
@@ -27,6 +28,16 @@ const COMPLETED_RESULT: GradingJobWithResultResponse = {
   },
   is_approved: false,
 };
+
+function makeApprovalControls(overrides?: Partial<GradeApprovalControls>): GradeApprovalControls {
+  return {
+    approve: jest.fn(),
+    isApproving: false,
+    isApproved: false,
+    approvalError: null,
+    ...overrides,
+  };
+}
 
 function makeReviewControls(overrides?: Partial<GradingReviewControls>): GradingReviewControls {
   return {
@@ -347,6 +358,96 @@ describe("GradingCard", () => {
       expect(screen.queryByText("Clarity")).toBeNull();
       fireEvent.press(screen.getByText(/Rubric breakdown/));
       expect(screen.getByText("Clarity")).toBeTruthy();
+    });
+  });
+
+  describe("approval controls", () => {
+    it("renders Approve button when reviewControls and approvalControls present and !isApproved", () => {
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          reviewControls={makeReviewControls()}
+          approvalControls={makeApprovalControls({ isApproved: false })}
+        />,
+      );
+      expect(screen.getByRole("button", { name: "Approve grade" })).toBeTruthy();
+    });
+
+    it("does not render Approve button when approvalControls is null", () => {
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          reviewControls={makeReviewControls()}
+          approvalControls={null}
+        />,
+      );
+      expect(screen.queryByRole("button", { name: "Approve grade" })).toBeNull();
+    });
+
+    it("Approve button is disabled and shows 'Approving...' when isApproving=true", () => {
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          reviewControls={makeReviewControls()}
+          approvalControls={makeApprovalControls({ isApproving: true })}
+        />,
+      );
+      expect(screen.getByText("Approving...")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Approve grade" })).toBeDisabled();
+    });
+
+    it("shows 'Approved ✓' text when isApproved=true and no Approve button", () => {
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          reviewControls={makeReviewControls()}
+          approvalControls={makeApprovalControls({ isApproved: true })}
+        />,
+      );
+      expect(screen.getByText("Approved ✓")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Approve grade" })).toBeNull();
+    });
+
+    it("renders approvalError text when set", () => {
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          reviewControls={makeReviewControls()}
+          approvalControls={makeApprovalControls({ approvalError: "Approval failed" })}
+        />,
+      );
+      expect(screen.getByText("Approval failed")).toBeTruthy();
+    });
+
+    it("tapping Approve calls approvalControls.approve", () => {
+      const controls = makeApprovalControls();
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          reviewControls={makeReviewControls()}
+          approvalControls={controls}
+        />,
+      );
+      fireEvent.press(screen.getByRole("button", { name: "Approve grade" }));
+      expect(controls.approve).toHaveBeenCalledTimes(1);
     });
   });
 });
