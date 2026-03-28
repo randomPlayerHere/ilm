@@ -20,6 +20,22 @@ export interface GradingJobResponse {
   attempt_count: number;
   submitted_at: string;
   completed_at: string | null;
+  failure_code: AIGradingErrorCode | null;
+  failure_reason: string | null;
+  rubric_criteria: { criterion: string; description: string | null }[];
+}
+
+export interface ManualGradeRequest {
+  score: string;
+  feedback: string;
+}
+
+export interface ManualGradeResponse {
+  job_id: string;
+  score: string;
+  feedback: string;
+  grader_user_id: string;
+  graded_at: string;
 }
 
 export interface GradingJobWithResultResponse extends GradingJobResponse {

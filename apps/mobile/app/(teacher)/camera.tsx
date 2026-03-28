@@ -9,8 +9,8 @@ import { CameraCapture, CaptureResult } from "../../src/features/grading/compone
 export default function CameraScreen() {
   const router = useRouter();
   const [permission, requestPermission] = useCameraPermissions();
-  const { classId = "cls_demo_math_1", studentId = "stu_demo_1" } =
-    useLocalSearchParams<{ classId?: string; studentId?: string }>();
+  const { classId = "cls_demo_math_1", studentId = "stu_demo_1", assignmentId = "" } =
+    useLocalSearchParams<{ classId?: string; studentId?: string; assignmentId?: string }>();
 
   // Request permission on mount — permission is null while the OS dialog is pending
   useEffect(() => {
@@ -20,7 +20,7 @@ export default function CameraScreen() {
   function handleCaptureAccepted(_result: CaptureResult) {
     router.replace({
       pathname: "/(teacher)/grading",
-      params: { classId, studentId },
+      params: { classId, studentId, ...(assignmentId ? { assignmentId } : {}) },
     });
   }
 

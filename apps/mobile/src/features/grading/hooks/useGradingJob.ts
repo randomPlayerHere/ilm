@@ -17,14 +17,16 @@ export interface GradingJobState {
   result: GradingJobWithResultResponse | null;
   error: string | null;
   photoUri: string | null;
+  retrying: boolean;
 }
 
-export function useGradingJob(classId: string, studentId: string): GradingJobState {
+export function useGradingJob(classId: string, studentId: string, assignmentId?: string): GradingJobState {
   const [state, setState] = useState<GradingJobState>({
     status: "idle",
     result: null,
     error: null,
     photoUri: null,
+    retrying: false,
   });
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -48,9 +50,15 @@ export function useGradingJob(classId: string, studentId: string): GradingJobSta
               ...s,
               status: job.status as "completed" | "failed",
               result: job,
-              error: job.status === "failed" ? "AI grading did not complete — please try again." : null,
+              retrying: false,
+              error: job.status === "failed"
+                ? (job.failure_reason ?? "AI grading did not complete — please try again.")
+                : null,
             }));
           } else {
+            if (job.attempt_count > 1) {
+              setState((s) => ({ ...s, retrying: true }));
+            }
             scheduleNextPoll(assignmentId, jobId, token);
           }
         } catch (err: unknown) {
@@ -103,12 +111,12 @@ export function useGradingJob(classId: string, studentId: string): GradingJobSta
       const photoUri = pendingCapture.compressedUri;
 
       // Set initial state with photoUri
-      setState({ status: "uploading", result: null, error: null, photoUri });
+      setState({ status: "uploading", result: null, error: null, photoUri, retrying: false });
 
       try {
-        // 3. Create assignment
+        // 3. Create assignment (skip if assignmentId provided — retake flow reuses existing)
         const title = `Assignment ${new Date().toLocaleDateString()}`;
-        const { assignment_id } = await createAssignment(classId, title, token);
+        const assignment_id = assignmentId ?? (await createAssignment(classId, title, token)).assignment_id;
         if (!isMountedRef.current) return;
 
         // 4. Upload artifact
@@ -138,7 +146,7 @@ export function useGradingJob(classId: string, studentId: string): GradingJobSta
       isMountedRef.current = false;
       if (timerRef.current !== null) clearTimeout(timerRef.current);
     };
-  }, [classId, studentId, scheduleNextPoll]);
+  }, [classId, studentId, assignmentId, scheduleNextPoll]);
 
   return state;
 }

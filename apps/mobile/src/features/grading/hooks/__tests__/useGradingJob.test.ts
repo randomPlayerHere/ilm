@@ -34,7 +34,7 @@ const mockGetAuthData = tokenStorage.getAuthData as jest.MockedFunction<typeof t
 
 const FAKE_AUTH = { token: "fake-token", role: "teacher", homePath: "/", email: "test@test.com" };
 const FAKE_CAPTURE = { compressedUri: "file://test.jpg", originalUri: "file://orig.jpg", capturedAt: "2026-03-26T00:00:00Z", width: 800, height: 600 };
-const FAKE_JOB_RESPONSE = { job_id: "job_1", artifact_id: "art_1", assignment_id: "asgn_1", status: "pending" as const, attempt_count: 0, submitted_at: "", completed_at: null };
+const FAKE_JOB_RESPONSE = { job_id: "job_1", artifact_id: "art_1", assignment_id: "asgn_1", status: "pending" as const, attempt_count: 0, submitted_at: "", completed_at: null, failure_code: null as null, failure_reason: null as null, rubric_criteria: [] as { criterion: string; description: string | null }[] };
 const FAKE_COMPLETED_JOB = {
   ...FAKE_JOB_RESPONSE,
   status: "completed" as const,
@@ -51,7 +51,7 @@ const FAKE_COMPLETED_JOB = {
   },
   is_approved: false,
 };
-const FAKE_FAILED_JOB = { ...FAKE_JOB_RESPONSE, status: "failed" as const, completed_at: "2026-03-26T00:00:01Z", result: null, is_approved: false };
+const FAKE_FAILED_JOB = { ...FAKE_JOB_RESPONSE, status: "failed" as const, completed_at: "2026-03-26T00:00:01Z", result: null, is_approved: false, failure_code: 'MODEL_ERROR' as const, failure_reason: 'AI grading did not complete — please try again.' };
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -152,5 +152,37 @@ describe("useGradingJob", () => {
 
     expect(result.current.status).toBe("failed");
     expect(result.current.error).toBe("Request timed out");
+  });
+
+  it("retrying=false in initial state", async () => {
+    mockGetGradingJob.mockResolvedValue(FAKE_COMPLETED_JOB);
+    const { result } = renderHook(() => useGradingJob("cls_1", "stu_1"));
+    expect(result.current.retrying).toBe(false);
+  });
+
+  it("retrying=true when poll response has status='processing' and attempt_count=2", async () => {
+    const processingJob = { ...FAKE_JOB_RESPONSE, status: "processing" as const, result: null, is_approved: false, attempt_count: 2 };
+    mockGetGradingJob.mockResolvedValueOnce(processingJob).mockResolvedValue(FAKE_COMPLETED_JOB);
+    const { result } = renderHook(() => useGradingJob("cls_1", "stu_1"));
+    await act(async () => {});
+    await act(async () => { jest.advanceTimersByTime(2000); });
+    expect(result.current.retrying).toBe(true);
+  });
+
+  it("retrying=false (stays false) when poll response has status='processing' and attempt_count=1", async () => {
+    const processingJob = { ...FAKE_JOB_RESPONSE, status: "processing" as const, result: null, is_approved: false, attempt_count: 1 };
+    mockGetGradingJob.mockResolvedValueOnce(processingJob).mockResolvedValue(FAKE_COMPLETED_JOB);
+    const { result } = renderHook(() => useGradingJob("cls_1", "stu_1"));
+    await act(async () => {});
+    await act(async () => { jest.advanceTimersByTime(2000); });
+    expect(result.current.retrying).toBe(false);
+  });
+
+  it("when assignmentId is provided, createAssignment is NOT called and the provided value is used", async () => {
+    mockGetGradingJob.mockResolvedValue(FAKE_COMPLETED_JOB);
+    renderHook(() => useGradingJob("cls_1", "stu_1", "existing_asgn"));
+    await act(async () => {});
+    expect(mockCreateAssignment).not.toHaveBeenCalled();
+    expect(mockUploadArtifact).toHaveBeenCalledWith("existing_asgn", "stu_1", expect.any(String), expect.any(String));
   });
 });

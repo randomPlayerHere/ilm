@@ -28,24 +28,32 @@ export function useGradingReview(
   result: GradingJobWithResultResponse | null,
 ): GradingReviewControls | null {
   const aiResult = result?.result ?? null;
-  const initializedRef = useRef(false);
+  const initializedRefKeyRef = useRef<string | null>(null);
   const originalFeedbackRef = useRef<string>("");
 
   const [scoreValue, setScoreValue] = useState<number>(0);
   const [scoreInputText, setScoreInputText] = useState<string>("0");
   const [feedbackValue, setFeedbackValue] = useState<string>("");
 
-  // Initialize state once when result first arrives
+  // Initialize state when a new completed grading result arrives
   useEffect(() => {
-    if (aiResult && !initializedRef.current) {
-      initializedRef.current = true;
-      const parsed = parseProposedScore(aiResult.proposed_score);
-      setScoreValue(parsed);
-      setScoreInputText(String(parsed));
-      setFeedbackValue(aiResult.draft_feedback);
-      originalFeedbackRef.current = aiResult.draft_feedback;
+    if (!result || !aiResult) {
+      initializedRefKeyRef.current = null;
+      return;
     }
-  }, [aiResult]);
+
+    const initKey = `${result.job_id}:${aiResult.generated_at}:${aiResult.proposed_score}:${aiResult.draft_feedback}`;
+    if (initializedRefKeyRef.current === initKey) {
+      return;
+    }
+
+    initializedRefKeyRef.current = initKey;
+    const parsed = parseProposedScore(aiResult.proposed_score);
+    setScoreValue(parsed);
+    setScoreInputText(String(parsed));
+    setFeedbackValue(aiResult.draft_feedback);
+    originalFeedbackRef.current = aiResult.draft_feedback;
+  }, [result, aiResult]);
 
   const increment = useCallback(() => {
     setScoreValue((v) => {
