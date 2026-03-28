@@ -1,8 +1,15 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+import time as _time_module
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
+from app.domains.grading.ai_provider import (
+    AIGradingError,
+    AIGradingProvider,
+    AIGradingRequest,
+)
 from app.domains.grading.repository import (
     ArtifactRecord,
     AssignmentRecord,
@@ -16,13 +23,15 @@ from app.domains.grading.repository import (
     RecommendationResultRecord,
 )
 
-SUPPORTED_MEDIA_TYPES = frozenset({
-    "image/jpeg",
-    "image/png",
-    "image/gif",
-    "image/webp",
-    "application/pdf",
-})
+SUPPORTED_MEDIA_TYPES = frozenset(
+    {
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "application/pdf",
+    }
+)
 
 STRONG_RATINGS = frozenset({"exceeds_expectations"})
 
@@ -74,19 +83,19 @@ class Artifact:
     created_at: str
 
 
-class GradingProcessError(Exception):
-    """Raised by process_grading_job on simulated transient failure."""
-
-
 class GradingStateError(Exception):
     """Raised when a job is in the wrong state for the requested operation."""
 
 
 class GradingService:
-    _fail_on_job_ids: set[str] = set()  # test-injectable: jobs that should fail
 
-    def __init__(self, repository: InMemoryGradingRepository) -> None:
+    def __init__(
+        self,
+        repository: InMemoryGradingRepository,
+        ai_provider: AIGradingProvider,
+    ) -> None:
         self._repository = repository
+        self._ai_provider = ai_provider
 
     def create_assignment(
         self,
@@ -124,7 +133,10 @@ class GradingService:
         assignment = self._repository.get_assignment(assignment_id)
         if assignment is None:
             raise GradingAccessError("Forbidden")
-        if assignment.org_id != actor_org_id or assignment.teacher_user_id != actor_user_id:
+        if (
+            assignment.org_id != actor_org_id
+            or assignment.teacher_user_id != actor_user_id
+        ):
             raise GradingAccessError("Forbidden")
 
         if media_type not in SUPPORTED_MEDIA_TYPES:
@@ -177,7 +189,10 @@ class GradingService:
         assignment = self._repository.get_assignment(assignment_id)
         if assignment is None:
             raise GradingAccessError("Forbidden")
-        if assignment.org_id != actor_org_id or assignment.teacher_user_id != actor_user_id:
+        if (
+            assignment.org_id != actor_org_id
+            or assignment.teacher_user_id != actor_user_id
+        ):
             raise GradingAccessError("Forbidden")
         records = self._repository.list_artifacts_for_assignment(assignment_id)
         return [self._to_artifact(r) for r in records]
@@ -237,11 +252,20 @@ class GradingService:
         )
         return self._to_grading_job(record)
 
-    def process_grading_job(self, job_id: str) -> None:
-        """Run stub AI grading. Called by background task after job submission.
+    def process_grading_job(
+        self,
+        job_id: str,
+        _sleep: Callable[[float], None] | None = None,
+    ) -> None:
+        """Run AI grading for job. Called by background task after job submission.
 
-        Raises GradingProcessError for jobs in _fail_on_job_ids (test-injectable transient failure).
+        Retries up to 2 times with exponential backoff (2s, 4s) on retryable errors.
+        Non-retryable errors mark the job failed immediately.
+        _sleep is injectable for tests to skip actual delays.
         """
+        if _sleep is None:
+            _sleep = _time_module.sleep
+
         job = self._repository.get_grading_job_by_id(job_id)
         if job is None:
             return
@@ -249,41 +273,72 @@ class GradingService:
         if job.status in {"completed", "failed"}:
             return
 
-        # Simulated transient error injection for testing
-        if job_id in self.__class__._fail_on_job_ids:
-            self._repository.update_grading_job(
-                job_id=job_id,
-                status="failed",
-                attempt_count=job.attempt_count + 1,
-            )
-            raise GradingProcessError(f"Simulated transient error for job {job_id}")
-
-        updated_job = self._repository.update_grading_job(
-            job_id=job_id,
-            status="processing",
-            attempt_count=job.attempt_count + 1,
+        artifact = self._repository.get_artifact(job.artifact_id)
+        # Build request — use stub URL since real S3 upload happens in Story 5.9
+        image_url = artifact.storage_key if artifact else f"stub://{job.artifact_id}"
+        request = AIGradingRequest(
+            image_url=image_url,
+            rubric_context={
+                "content_accuracy": "str",
+                "presentation": "str",
+                "completeness": "str",
+            },
+            standards_profile=None,
         )
 
-        # Stub AI grading output — deterministic for reliable test assertions
+        backoff_delays = [2.0, 4.0]
+        max_attempts = len(backoff_delays) + 1  # 3 total: initial + 2 retries
+
+        for attempt in range(max_attempts):
+            self._repository.update_grading_job(
+                job_id=job_id,
+                status="processing",
+                attempt_count=attempt + 1,
+            )
+            try:
+                response = self._ai_provider.grade(request)
+                break  # success — exit retry loop
+            except AIGradingError as exc:
+                is_last_attempt = attempt == max_attempts - 1
+                if not exc.retryable or is_last_attempt:
+                    self._repository.route_grading_job_to_dlq(
+                        job_id=job_id,
+                        error_code=exc.error_code,
+                        reason=exc.reason,
+                    )
+                    self._repository.update_grading_job(
+                        job_id=job_id,
+                        status="failed",
+                        attempt_count=attempt + 1,
+                    )
+                    return  # job failed — caller checks status
+                # Retryable error — wait and retry
+                _sleep(backoff_delays[attempt])
+        else:
+            # for...else: this block runs only if the loop completed WITHOUT a `break`
+            # (i.e., all attempts exhausted without a successful response)
+            self._repository.update_grading_job(
+                job_id=job_id, status="failed", attempt_count=max_attempts
+            )
+            return
+
+        # Save result from successful AI response
         self._repository.save_grading_result(
             job_id=job_id,
-            proposed_score="85/100",
-            rubric_mapping={
-                "content_accuracy": "meets_expectations",
-                "presentation": "exceeds_expectations",
-                "completeness": "meets_expectations",
-            },
-            draft_feedback=(
-                "Good work overall. Content is accurate and presentation is strong. "
-                "Review completeness of answers on section 3."
-            ),
+            proposed_score=response.suggested_score,
+            rubric_mapping=response.rubric_breakdown,
+            draft_feedback=response.feedback_text,
+            confidence_level=response.confidence_level,
+            confidence_score=response.confidence_score,
+            confidence_reason=response.confidence_reason,
+            practice_recommendations=response.practice_recommendations,
         )
 
         now = datetime.now(UTC).isoformat()
         self._repository.update_grading_job(
             job_id=job_id,
             status="completed",
-            attempt_count=updated_job.attempt_count,
+            attempt_count=attempt + 1,
             completed_at=now,
         )
 
@@ -339,6 +394,10 @@ class GradingService:
             rubric_mapping=record.rubric_mapping,
             draft_feedback=record.draft_feedback,
             generated_at=record.generated_at,
+            confidence_level=record.confidence_level,
+            confidence_score=record.confidence_score,
+            confidence_reason=record.confidence_reason,
+            practice_recommendations=record.practice_recommendations,
         )
 
     # --- Grade approval operations ---
@@ -459,7 +518,9 @@ class GradingService:
             raise GradingAccessError("Forbidden")
 
         if self._repository.get_grade_approval(job_id) is None:
-            raise GradingStateError("Grading job must be approved before generating recommendations")
+            raise GradingStateError(
+                "Grading job must be approved before generating recommendations"
+            )
 
         existing = self._repository.get_recommendation_job_for_grading_job(job_id)
         if existing is not None:
@@ -494,7 +555,9 @@ class GradingService:
         )
 
         grading_result = self._repository.get_grading_result(rec_job.job_id)
-        rubric_mapping = grading_result.rubric_mapping if grading_result is not None else {}
+        rubric_mapping = (
+            grading_result.rubric_mapping if grading_result is not None else {}
+        )
         topics = _extract_weakness_topics(rubric_mapping)
 
         self._repository.save_recommendation_result(
@@ -538,7 +601,9 @@ class GradingService:
             if result_record is not None:
                 result = self._to_recommendation_result(result_record)
 
-        is_confirmed = self._repository.get_confirmed_recommendation(rec_job_id) is not None
+        is_confirmed = (
+            self._repository.get_confirmed_recommendation(rec_job_id) is not None
+        )
         return self._to_recommendation_job_with_result(rec_job, result, is_confirmed)
 
     def confirm_recommendations(
@@ -562,20 +627,26 @@ class GradingService:
         if rec_job is None or rec_job.job_id != job_id:
             raise GradingAccessError("Forbidden")
         if rec_job.status != "completed":
-            raise GradingStateError("Recommendation job must be completed before confirming")
+            raise GradingStateError(
+                "Recommendation job must be completed before confirming"
+            )
 
         result_record = self._repository.get_recommendation_result(rec_job_id)
         weakness_signals_by_topic: dict[str, str] = {}
         if result_record is not None:
             for item in result_record.topics:
-                weakness_signals_by_topic[item.get("topic", "")] = item.get("weakness_signal", "")
+                weakness_signals_by_topic[item.get("topic", "")] = item.get(
+                    "weakness_signal", ""
+                )
 
         normalized_topics: list[dict[str, str]] = []
         for item in topics:
             topic_name = item.get("topic", "")
             weakness_signal = item.get("weakness_signal")
             if not weakness_signal:
-                weakness_signal = weakness_signals_by_topic.get(topic_name, "teacher_confirmed")
+                weakness_signal = weakness_signals_by_topic.get(
+                    topic_name, "teacher_confirmed"
+                )
             normalized_topics.append(
                 {
                     "topic": topic_name,
@@ -621,7 +692,9 @@ class GradingService:
 
         return self._to_confirmed_recommendation(record)
 
-    def _to_recommendation_job(self, record: RecommendationJobRecord) -> RecommendationJob:
+    def _to_recommendation_job(
+        self, record: RecommendationJobRecord
+    ) -> RecommendationJob:
         return RecommendationJob(
             rec_job_id=record.rec_job_id,
             job_id=record.job_id,
@@ -633,7 +706,9 @@ class GradingService:
             completed_at=record.completed_at,
         )
 
-    def _to_recommendation_result(self, record: RecommendationResultRecord) -> RecommendationResult:
+    def _to_recommendation_result(
+        self, record: RecommendationResultRecord
+    ) -> RecommendationResult:
         return RecommendationResult(
             rec_job_id=record.rec_job_id,
             job_id=record.job_id,
@@ -661,7 +736,9 @@ class GradingService:
             is_confirmed=is_confirmed,
         )
 
-    def _to_confirmed_recommendation(self, record: ConfirmedRecommendationRecord) -> ConfirmedRecommendation:
+    def _to_confirmed_recommendation(
+        self, record: ConfirmedRecommendationRecord
+    ) -> ConfirmedRecommendation:
         return ConfirmedRecommendation(
             rec_job_id=record.rec_job_id,
             job_id=record.job_id,
@@ -677,14 +754,16 @@ def _extract_weakness_topics(rubric_mapping: dict[str, str]) -> list[dict[str, s
     topics = []
     for dimension, rating in rubric_mapping.items():
         if rating not in STRONG_RATINGS:
-            topics.append({
-                "topic": dimension.replace("_", " ").title(),
-                "suggestion": _RECOMMENDATION_SUGGESTIONS.get(
-                    dimension,
-                    f"Additional practice on {dimension.replace('_', ' ')} is recommended.",
-                ),
-                "weakness_signal": rating,
-            })
+            topics.append(
+                {
+                    "topic": dimension.replace("_", " ").title(),
+                    "suggestion": _RECOMMENDATION_SUGGESTIONS.get(
+                        dimension,
+                        f"Additional practice on {dimension.replace('_', ' ')} is recommended.",
+                    ),
+                    "weakness_signal": rating,
+                }
+            )
     return topics
 
 
@@ -706,6 +785,10 @@ class GradingResult:
     rubric_mapping: dict[str, str]
     draft_feedback: str
     generated_at: str
+    confidence_level: str = "high"
+    confidence_score: float = 0.9
+    confidence_reason: str | None = None
+    practice_recommendations: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

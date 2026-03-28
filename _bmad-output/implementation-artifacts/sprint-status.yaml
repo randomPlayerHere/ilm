@@ -1,4 +1,4 @@
-# generated: 2026-03-20
+# generated: 2026-03-25
 # project: ilm
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 #   Track 2 (Mobile + Web): Epics 4, 5, 6, 7, 8, 9
 #   Track 3 (Infrastructure): Epic 4 (bootstrap), Epic 10 (analytics), Epic 11 (compliance)
 
-generated: 2026-03-20
+generated: 2026-03-25
 project: ilm
 project_key: NOKEY
 tracking_system: file-system
@@ -83,7 +83,7 @@ development_status:
   epic-3-retrospective: done
 
   # ============================================================
-  # EPIC 4: Platform Bootstrap, Mobile Auth & Onboarding
+  # EPIC 4: Platform Bootstrap, Mobile Auth & Onboarding (COMPLETED)
   # ============================================================
   epic-4: done
   4-1-initialize-turborepo-monorepo-and-project-scaffold: done
@@ -101,11 +101,11 @@ development_status:
   # ============================================================
   # EPIC 5: Teacher Mobile Grading Experience
   # ============================================================
-  epic-5: backlog
-  5-1-ai-grading-service-integration-contract: backlog
-  5-2-camera-capture-and-client-side-image-processing: backlog
-  5-3-ai-grading-pipeline-and-async-job-processing: backlog
-  5-4-grading-review-card-and-score-adjustment: backlog
+  epic-5: in-progress
+  5-1-ai-grading-service-integration-contract: done
+  5-2-camera-capture-and-client-side-image-processing: done
+  5-3-ai-grading-pipeline-and-async-job-processing: done
+  5-4-grading-review-card-and-score-adjustment: in-progress
   5-5-grade-approval-and-visibility-control: backlog
   5-6-ai-failure-fallback-and-manual-grading: backlog
   5-7-practice-recommendations: backlog

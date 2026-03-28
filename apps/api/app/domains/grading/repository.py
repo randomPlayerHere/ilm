@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 
@@ -63,6 +63,11 @@ class GradingResultRecord:
     rubric_mapping: dict[str, str]
     draft_feedback: str
     generated_at: str
+    # Confidence fields (added Story 5.1) — defaults for backward compatibility
+    confidence_level: str = "high"  # "high" | "medium" | "low"
+    confidence_score: float = 0.9  # 0.0 – 1.0
+    confidence_reason: str | None = None
+    practice_recommendations: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -93,8 +98,8 @@ class RecommendationJobRecord:
     assignment_id: str
     org_id: str
     teacher_user_id: str
-    student_id: str        # denormalized from artifact at submit time
-    status: str            # pending | processing | completed | failed
+    student_id: str  # denormalized from artifact at submit time
+    status: str  # pending | processing | completed | failed
     attempt_count: int
     submitted_at: str
     completed_at: str | None
@@ -105,7 +110,9 @@ class RecommendationResultRecord:
     rec_job_id: str
     job_id: str
     student_id: str
-    topics: list[dict[str, str]]  # [{"topic": str, "suggestion": str, "weakness_signal": str}]
+    topics: list[
+        dict[str, str]
+    ]  # [{"topic": str, "suggestion": str, "weakness_signal": str}]
     generated_at: str
 
 
@@ -122,11 +129,11 @@ class ConfirmedRecommendationRecord:
 @dataclass(frozen=True)
 class TopicInsightRecord:
     topic: str
-    status: str              # always "weakness" in MVP
+    status: str  # always "weakness" in MVP
     weakness_signal: str
-    guidance: str            # from topics[].suggestion
-    rec_job_id: str          # for client deep-linking
-    confirmed_at: str        # ISO 8601; used for de-duplication ordering
+    guidance: str  # from topics[].suggestion
+    rec_job_id: str  # for client deep-linking
+    confirmed_at: str  # ISO 8601; used for de-duplication ordering
 
 
 @dataclass(frozen=True)
@@ -150,12 +157,19 @@ class InMemoryGradingRepository:
     _artifacts: dict[str, ArtifactRecord] = {}
     _grading_jobs: dict[str, GradingJobRecord] = {}
     _grading_results: dict[str, GradingResultRecord] = {}
+    _grading_dlq: dict[str, dict[str, str]] = {}
     _artifact_job_index: dict[str, str] = {}  # artifact_id → job_id
     _grade_approvals: dict[str, GradeApprovalRecord] = {}  # job_id → latest approval
-    _grade_versions: dict[str, list[GradeVersionRecord]] = {}  # job_id → ordered versions
-    _recommendation_jobs: dict[str, RecommendationJobRecord] = {}       # rec_job_id → record
-    _recommendation_results: dict[str, RecommendationResultRecord] = {} # rec_job_id → result
-    _confirmed_recommendations: dict[str, ConfirmedRecommendationRecord] = {}  # rec_job_id → confirmed
+    _grade_versions: dict[str, list[GradeVersionRecord]] = (
+        {}
+    )  # job_id → ordered versions
+    _recommendation_jobs: dict[str, RecommendationJobRecord] = {}  # rec_job_id → record
+    _recommendation_results: dict[str, RecommendationResultRecord] = (
+        {}
+    )  # rec_job_id → result
+    _confirmed_recommendations: dict[str, ConfirmedRecommendationRecord] = (
+        {}
+    )  # rec_job_id → confirmed
     _job_rec_index: dict[str, str] = {}  # job_id → rec_job_id (idempotency)
     _assignment_seq: int = 0
     _artifact_seq: int = 0
@@ -219,6 +233,7 @@ class InMemoryGradingRepository:
         cls._artifacts = {}
         cls._grading_jobs = {}
         cls._grading_results = {}
+        cls._grading_dlq = {}
         cls._artifact_job_index = {}
         cls._grade_approvals = {}
         cls._grade_versions = {}
@@ -301,7 +316,8 @@ class InMemoryGradingRepository:
 
     def list_artifacts_for_assignment(self, assignment_id: str) -> list[ArtifactRecord]:
         artifacts = [
-            a for a in self.__class__._artifacts.values()
+            a
+            for a in self.__class__._artifacts.values()
             if a.assignment_id == assignment_id
         ]
         artifacts.sort(key=lambda a: a.created_at)
@@ -373,6 +389,10 @@ class InMemoryGradingRepository:
         proposed_score: str,
         rubric_mapping: dict[str, str],
         draft_feedback: str,
+        confidence_level: str = "high",
+        confidence_score: float = 0.9,
+        confidence_reason: str | None = None,
+        practice_recommendations: list[str] | None = None,
     ) -> GradingResultRecord:
         now = datetime.now(UTC).isoformat()
         record = GradingResultRecord(
@@ -381,12 +401,30 @@ class InMemoryGradingRepository:
             rubric_mapping=rubric_mapping,
             draft_feedback=draft_feedback,
             generated_at=now,
+            confidence_level=confidence_level,
+            confidence_score=confidence_score,
+            confidence_reason=confidence_reason,
+            practice_recommendations=list(practice_recommendations or []),
         )
         self.__class__._grading_results[job_id] = record
         return record
 
     def get_grading_result(self, job_id: str) -> GradingResultRecord | None:
         return self.__class__._grading_results.get(job_id)
+
+    def route_grading_job_to_dlq(
+        self,
+        job_id: str,
+        error_code: str,
+        reason: str,
+    ) -> None:
+        self.__class__._grading_dlq[job_id] = {
+            "error_code": error_code,
+            "reason": reason,
+        }
+
+    def is_grading_job_in_dlq(self, job_id: str) -> bool:
+        return job_id in self.__class__._grading_dlq
 
     # --- Grade approval methods ---
 
@@ -468,10 +506,14 @@ class InMemoryGradingRepository:
         self.__class__._job_rec_index[job_id] = rec_job_id
         return record
 
-    def get_recommendation_job_by_id(self, rec_job_id: str) -> RecommendationJobRecord | None:
+    def get_recommendation_job_by_id(
+        self, rec_job_id: str
+    ) -> RecommendationJobRecord | None:
         return self.__class__._recommendation_jobs.get(rec_job_id)
 
-    def get_recommendation_job_for_grading_job(self, job_id: str) -> RecommendationJobRecord | None:
+    def get_recommendation_job_for_grading_job(
+        self, job_id: str
+    ) -> RecommendationJobRecord | None:
         rec_job_id = self.__class__._job_rec_index.get(job_id)
         if rec_job_id is None:
             return None
@@ -520,7 +562,9 @@ class InMemoryGradingRepository:
         self.__class__._recommendation_results[rec_job_id] = record
         return record
 
-    def get_recommendation_result(self, rec_job_id: str) -> RecommendationResultRecord | None:
+    def get_recommendation_result(
+        self, rec_job_id: str
+    ) -> RecommendationResultRecord | None:
         return self.__class__._recommendation_results.get(rec_job_id)
 
     def upsert_confirmed_recommendation(
@@ -543,12 +587,17 @@ class InMemoryGradingRepository:
         self.__class__._confirmed_recommendations[rec_job_id] = record
         return record
 
-    def get_confirmed_recommendation(self, rec_job_id: str) -> ConfirmedRecommendationRecord | None:
+    def get_confirmed_recommendation(
+        self, rec_job_id: str
+    ) -> ConfirmedRecommendationRecord | None:
         return self.__class__._confirmed_recommendations.get(rec_job_id)
 
-    def list_approved_grades_for_student(self, student_id: str, org_id: str) -> list[ApprovedGradeRecord]:
+    def list_approved_grades_for_student(
+        self, student_id: str, org_id: str
+    ) -> list[ApprovedGradeRecord]:
         student_artifacts = [
-            a for a in self.__class__._artifacts.values()
+            a
+            for a in self.__class__._artifacts.values()
             if a.student_id == student_id and a.org_id == org_id
         ]
         results = []
@@ -560,21 +609,29 @@ class InMemoryGradingRepository:
             if approval is None:
                 continue
             assignment = self.__class__._assignments.get(artifact.assignment_id)
-            results.append(ApprovedGradeRecord(
-                job_id=job_id,
-                artifact_id=artifact.artifact_id,
-                assignment_id=artifact.assignment_id,
-                assignment_title=assignment.title if assignment else "[Assignment Not Found]",
-                student_id=student_id,
-                approved_score=approval.approved_score,
-                approved_feedback=approval.approved_feedback,
-                approved_at=approval.approved_at,
-                approver_user_id=approval.approver_user_id,
-                version=approval.version,
-            ))
-        return sorted(results, key=lambda r: (datetime.fromisoformat(r.approved_at), r.job_id))
+            results.append(
+                ApprovedGradeRecord(
+                    job_id=job_id,
+                    artifact_id=artifact.artifact_id,
+                    assignment_id=artifact.assignment_id,
+                    assignment_title=(
+                        assignment.title if assignment else "[Assignment Not Found]"
+                    ),
+                    student_id=student_id,
+                    approved_score=approval.approved_score,
+                    approved_feedback=approval.approved_feedback,
+                    approved_at=approval.approved_at,
+                    approver_user_id=approval.approver_user_id,
+                    version=approval.version,
+                )
+            )
+        return sorted(
+            results, key=lambda r: (datetime.fromisoformat(r.approved_at), r.job_id)
+        )
 
-    def list_confirmed_recommendations_for_student(self, student_id: str, org_id: str) -> list[ConfirmedRecommendationRecord]:
+    def list_confirmed_recommendations_for_student(
+        self, student_id: str, org_id: str
+    ) -> list[ConfirmedRecommendationRecord]:
         results = []
         for rec in self.__class__._confirmed_recommendations.values():
             if rec.student_id != student_id:
@@ -585,10 +642,13 @@ class InMemoryGradingRepository:
             results.append(rec)
         return results
 
-    def list_topic_insights_for_student(self, student_id: str, org_id: str) -> tuple[list[TopicInsightRecord], bool]:
+    def list_topic_insights_for_student(
+        self, student_id: str, org_id: str
+    ) -> tuple[list[TopicInsightRecord], bool]:
         # Sufficient-data gate: any approved grade for this student+org?
         has_grade = any(
-            (job_id := self.__class__._artifact_job_index.get(a.artifact_id)) is not None
+            (job_id := self.__class__._artifact_job_index.get(a.artifact_id))
+            is not None
             and self.__class__._grade_approvals.get(job_id) is not None
             for a in self.__class__._artifacts.values()
             if a.student_id == student_id and a.org_id == org_id
@@ -602,7 +662,11 @@ class InMemoryGradingRepository:
         # Flatten topics; keep latest confirmed_at per topic (de-duplicate)
         # Use datetime.fromisoformat() to avoid mixed-offset string misordering (per Story 3.2 lesson)
         # Secondary key rec_job_id ensures stable sort when timestamps are equal
-        recs_sorted = sorted(recs, key=lambda r: (datetime.fromisoformat(r.confirmed_at), r.rec_job_id), reverse=True)
+        recs_sorted = sorted(
+            recs,
+            key=lambda r: (datetime.fromisoformat(r.confirmed_at), r.rec_job_id),
+            reverse=True,
+        )
         seen_topics: set[str] = set()
         insights: list[TopicInsightRecord] = []
         for rec in recs_sorted:
@@ -611,12 +675,14 @@ class InMemoryGradingRepository:
                 if not topic or topic in seen_topics:
                     continue
                 seen_topics.add(topic)
-                insights.append(TopicInsightRecord(
-                    topic=topic,
-                    status="weakness",
-                    weakness_signal=entry.get("weakness_signal", ""),
-                    guidance=entry.get("suggestion", ""),
-                    rec_job_id=rec.rec_job_id,
-                    confirmed_at=rec.confirmed_at,
-                ))
+                insights.append(
+                    TopicInsightRecord(
+                        topic=topic,
+                        status="weakness",
+                        weakness_signal=entry.get("weakness_signal", ""),
+                        guidance=entry.get("suggestion", ""),
+                        rec_job_id=rec.rec_job_id,
+                        confirmed_at=rec.confirmed_at,
+                    )
+                )
         return insights, True

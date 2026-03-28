@@ -1,10 +1,25 @@
 from __future__ import annotations
 
 import logging
+import os
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+    status,
+)
 
 from app.domains.auth.dependencies import ActorContext, require_authenticated_actor
+from app.domains.grading.ai_provider import (
+    AIGradingProvider,
+    MockAIGradingProvider,
+    NonMockAIGradingProvider,
+)
 from app.domains.grading.repository import InMemoryGradingRepository
 from app.domains.grading.schemas import (
     ArtifactListResponse,
@@ -46,7 +61,19 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/grading", tags=["grading"])
 
-_grading_service = GradingService(repository=InMemoryGradingRepository())
+
+def _make_ai_provider() -> AIGradingProvider:
+    # AI_MOCK_MODE defaults to "true" for local development
+    mock_mode = os.environ.get("AI_MOCK_MODE", "true").lower()
+    if mock_mode == "true":
+        return MockAIGradingProvider()
+    return NonMockAIGradingProvider()
+
+
+_grading_service = GradingService(
+    repository=InMemoryGradingRepository(),
+    ai_provider=_make_ai_provider(),
+)
 
 
 async def get_grading_service() -> GradingService:
@@ -55,6 +82,7 @@ async def get_grading_service() -> GradingService:
 
 def reset_grading_state_for_tests() -> None:
     InMemoryGradingRepository.reset_state()
+    MockAIGradingProvider.reset()  # prevents mock scenario state from bleeding across tests
 
 
 def _require_teacher(actor: ActorContext) -> None:
@@ -88,7 +116,11 @@ def _to_artifact_response(artifact: Artifact) -> ArtifactResponse:
     )
 
 
-@router.post("/assignments", response_model=AssignmentResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/assignments",
+    response_model=AssignmentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_assignment(
     payload: AssignmentCreateRequest,
     actor: ActorContext = Depends(require_authenticated_actor),
@@ -103,7 +135,9 @@ async def create_assignment(
             title=payload.title,
         )
     except GradingAccessError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
     return _to_assignment_response(assignment)
 
 
@@ -132,7 +166,9 @@ async def upload_artifact(
     except ArtifactFormatError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except GradingAccessError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
     finally:
         await file.close()
     return _to_artifact_response(artifact)
@@ -157,7 +193,9 @@ async def get_artifact(
             artifact_id=artifact_id,
         )
     except GradingAccessError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
     return _to_artifact_response(artifact)
 
 
@@ -178,7 +216,9 @@ async def list_artifacts(
             assignment_id=assignment_id,
         )
     except GradingAccessError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
     return ArtifactListResponse(artifacts=[_to_artifact_response(a) for a in artifacts])
 
 
@@ -197,7 +237,9 @@ def _to_grading_job_response(job: GradingJob) -> GradingJobResponse:
     )
 
 
-def _to_grading_job_with_result_response(job_with_result: GradingJobWithResult) -> GradingJobWithResultResponse:
+def _to_grading_job_with_result_response(
+    job_with_result: GradingJobWithResult,
+) -> GradingJobWithResultResponse:
     result_response = None
     if job_with_result.result is not None:
         r = job_with_result.result
@@ -206,6 +248,10 @@ def _to_grading_job_with_result_response(job_with_result: GradingJobWithResult) 
             rubric_mapping=r.rubric_mapping,
             draft_feedback=r.draft_feedback,
             generated_at=r.generated_at,
+            confidence_level=r.confidence_level,
+            confidence_score=r.confidence_score,
+            confidence_reason=r.confidence_reason,
+            practice_recommendations=r.practice_recommendations,
         )
     return GradingJobWithResultResponse(
         job_id=job_with_result.job_id,
@@ -275,9 +321,13 @@ async def submit_grading_job(
             artifact_id=payload.artifact_id,
         )
     except GradingAccessError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
     if job.status == "pending" and job.attempt_count == 0:
-        background_tasks.add_task(_process_grading_job_task, job_id=job.job_id, service=service)
+        background_tasks.add_task(
+            _process_grading_job_task, job_id=job.job_id, service=service
+        )
     return _to_grading_job_response(job)
 
 
@@ -300,7 +350,9 @@ async def get_grading_job(
             job_id=job_id,
         )
     except GradingAccessError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
     return _to_grading_job_with_result_response(job_with_result)
 
 
@@ -327,9 +379,13 @@ async def approve_grading_job(
             approved_feedback=payload.approved_feedback,
         )
     except GradingAccessError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
     except GradingStateError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
     return _to_grade_approval_response(approval)
 
 
@@ -352,7 +408,9 @@ async def get_grade_approval(
             job_id=job_id,
         )
     except GradingAccessError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
     return _to_grade_approval_response(approval)
 
 
@@ -375,14 +433,20 @@ async def list_grade_versions(
             job_id=job_id,
         )
     except GradingAccessError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-    return GradeVersionListResponse(versions=[_to_grade_version_response(v) for v in versions])
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
+    return GradeVersionListResponse(
+        versions=[_to_grade_version_response(v) for v in versions]
+    )
 
 
 # --- Recommendation job helpers ---
 
 
-def _to_recommendation_job_response(job: RecommendationJob) -> RecommendationJobResponse:
+def _to_recommendation_job_response(
+    job: RecommendationJob,
+) -> RecommendationJobResponse:
     return RecommendationJobResponse(
         rec_job_id=job.rec_job_id,
         job_id=job.job_id,
@@ -427,7 +491,9 @@ def _to_recommendation_job_with_result_response(
     )
 
 
-def _to_confirmed_recommendation_response(confirmed: ConfirmedRecommendation) -> ConfirmedRecommendationResponse:
+def _to_confirmed_recommendation_response(
+    confirmed: ConfirmedRecommendation,
+) -> ConfirmedRecommendationResponse:
     return ConfirmedRecommendationResponse(
         rec_job_id=confirmed.rec_job_id,
         job_id=confirmed.job_id,
@@ -450,7 +516,9 @@ def _process_recommendation_job_task(rec_job_id: str, service: GradingService) -
     try:
         service.process_recommendation_job(rec_job_id)
     except Exception:  # noqa: BLE001
-        logger.exception("Background recommendation job failed for rec_job_id=%s", rec_job_id)
+        logger.exception(
+            "Background recommendation job failed for rec_job_id=%s", rec_job_id
+        )
 
 
 # --- Recommendation job endpoints ---
@@ -477,9 +545,13 @@ async def submit_recommendation_job(
             job_id=job_id,
         )
     except GradingAccessError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
     except GradingStateError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
     if rec_job.status == "pending" and rec_job.attempt_count == 0:
         background_tasks.add_task(
             _process_recommendation_job_task,
@@ -510,7 +582,9 @@ async def get_recommendation_job(
             rec_job_id=rec_job_id,
         )
     except GradingAccessError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
     return _to_recommendation_job_with_result_response(job_with_result)
 
 
@@ -539,9 +613,13 @@ async def confirm_recommendations(
             topics=topics,
         )
     except GradingAccessError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
     except GradingStateError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
     return _to_confirmed_recommendation_response(confirmed)
 
 
@@ -566,5 +644,7 @@ async def get_confirmed_recommendations(
             rec_job_id=rec_job_id,
         )
     except GradingAccessError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
     return _to_confirmed_recommendation_response(confirmed)
