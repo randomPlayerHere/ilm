@@ -1,4 +1,4 @@
-"""Tests for POST /v1/storage/presigned-url endpoint and storage abstraction."""
+"""Tests for storage endpoints and storage abstraction."""
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core.security import create_access_token
-from app.core.storage import generate_presigned_upload_url
+from app.core.storage import generate_presigned_download_url, generate_presigned_upload_url
 from app.domains.auth.router import reset_auth_state_for_tests
 from app.main import app
 
@@ -106,3 +106,93 @@ class TestStorageAbstractionUnit:
 
         call_kwargs = mock_client.generate_presigned_url.call_args[1]
         assert call_kwargs["ExpiresIn"] == 900
+
+    def test_scoped_key_uses_class_student_assignment_path(self) -> None:
+        """When class_id, student_id, assignment_id are provided, key uses scoped path."""
+        with patch("app.core.storage._make_s3_client") as mock_client_fn:
+            mock_client = MagicMock()
+            mock_client.generate_presigned_url.return_value = "http://fake-url"
+            mock_client_fn.return_value = mock_client
+
+            result = generate_presigned_upload_url(
+                org_id="org-abc",
+                filename="photo.jpg",
+                class_id="cls_1",
+                student_id="stu_1",
+                assignment_id="asgn_1",
+            )
+
+        assert result["key"].startswith("orgs/org-abc/cls_1/stu_1/asgn_1/")
+        assert result["key"].endswith(".jpg")
+
+    def test_download_url_uses_get_object(self) -> None:
+        with patch("app.core.storage._make_s3_client") as mock_client_fn:
+            mock_client = MagicMock()
+            mock_client.generate_presigned_url.return_value = "http://download-url"
+            mock_client_fn.return_value = mock_client
+
+            url = generate_presigned_download_url("orgs/org-abc/cls_1/stu_1/asgn_1/uuid.jpg")
+
+        assert url == "http://download-url"
+        call_args = mock_client.generate_presigned_url.call_args
+        assert call_args[0][0] == "get_object"
+        assert call_args[1]["ExpiresIn"] == 900
+
+
+class TestPresignedDownloadUrlEndpoint:
+    def test_returns_url_for_own_org_key(self) -> None:
+        mock_url = "http://minio:9000/bucket/orgs/org_demo_1/cls/stu/asgn/uuid.jpg?sig=xyz"
+        with patch("app.domains.storage.router.generate_presigned_download_url") as mock_gen:
+            mock_gen.return_value = mock_url
+
+            response = client.post(
+                "/v1/storage/presigned-download-url",
+                json={"key": "orgs/org_demo_1/cls/stu/asgn/uuid.jpg"},
+                headers=_teacher_headers(),
+            )
+
+        assert response.status_code == 200
+        assert response.json()["url"] == mock_url
+
+    def test_rejects_cross_org_key(self) -> None:
+        """Key from a different org should return 403."""
+        response = client.post(
+            "/v1/storage/presigned-download-url",
+            json={"key": "orgs/org_other_999/cls/stu/asgn/uuid.jpg"},
+            headers=_teacher_headers(),
+        )
+        assert response.status_code == 403
+
+    def test_rejects_unauthenticated_request(self) -> None:
+        response = client.post(
+            "/v1/storage/presigned-download-url",
+            json={"key": "orgs/org_demo_1/cls/stu/asgn/uuid.jpg"},
+        )
+        assert response.status_code == 401
+
+
+class TestPresignedUploadUrlScopedPath:
+    def test_scoped_upload_url_uses_correct_path_format(self) -> None:
+        mock_url = "http://minio:9000/bucket/orgs/org_demo_1/cls_demo_math_1/stu_demo_1/asgn_1/uuid.jpg?sig=abc"
+        with patch("app.core.storage._make_s3_client") as mock_client_fn:
+            mock_client = MagicMock()
+            mock_client.generate_presigned_url.return_value = mock_url
+            mock_client_fn.return_value = mock_client
+
+            response = client.post(
+                "/v1/storage/presigned-url",
+                json={
+                    "filename": "photo.jpg",
+                    "class_id": "cls_demo_math_1",
+                    "student_id": "stu_demo_1",
+                    "assignment_id": "asgn_1",
+                },
+                headers=_teacher_headers(),
+            )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["url"] == mock_url
+        # Key should use scoped path (no 'assignments' segment)
+        assert body["key"].startswith("orgs/org_demo_1/cls_demo_math_1/stu_demo_1/asgn_1/")
+        assert body["key"].endswith(".jpg")

@@ -78,6 +78,7 @@ class GradeApprovalRecord:
     approver_user_id: str
     approved_at: str
     version: int
+    practice_recommendations: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -148,6 +149,7 @@ class ApprovedGradeRecord:
     approved_at: str
     approver_user_id: str
     version: int
+    practice_recommendations: list[str] = field(default_factory=list)
 
 
 class InMemoryGradingRepository:
@@ -282,6 +284,15 @@ class InMemoryGradingRepository:
     def get_assignment(self, assignment_id: str) -> AssignmentRecord | None:
         return self.__class__._assignments.get(assignment_id)
 
+    def list_assignments_for_class(
+        self, class_id: str, org_id: str
+    ) -> list[AssignmentRecord]:
+        return [
+            a
+            for a in self.__class__._assignments.values()
+            if a.class_id == class_id and a.org_id == org_id
+        ]
+
     def create_artifact(
         self,
         assignment_id: str,
@@ -291,11 +302,13 @@ class InMemoryGradingRepository:
         teacher_user_id: str,
         file_name: str,
         media_type: str,
+        storage_key: str | None = None,
     ) -> ArtifactRecord:
         self.__class__._artifact_seq += 1
         artifact_id = f"artf_{self.__class__._artifact_seq}"
         now = datetime.now(UTC).isoformat()
-        storage_key = f"s3://stub/{artifact_id}"
+        if storage_key is None:
+            storage_key = f"s3://stub/{artifact_id}"
         record = ArtifactRecord(
             artifact_id=artifact_id,
             assignment_id=assignment_id,
@@ -436,6 +449,7 @@ class InMemoryGradingRepository:
         approver_user_id: str,
         version: int,
         approved_at: str,
+        practice_recommendations: list[str] | None = None,
     ) -> GradeApprovalRecord:
         record = GradeApprovalRecord(
             job_id=job_id,
@@ -444,6 +458,7 @@ class InMemoryGradingRepository:
             approver_user_id=approver_user_id,
             approved_at=approved_at,
             version=version,
+            practice_recommendations=practice_recommendations if practice_recommendations is not None else [],
         )
         self.__class__._grade_approvals[job_id] = record
         return record
@@ -623,6 +638,7 @@ class InMemoryGradingRepository:
                     approved_at=approval.approved_at,
                     approver_user_id=approval.approver_user_id,
                     version=approval.version,
+                    practice_recommendations=approval.practice_recommendations,
                 )
             )
         return sorted(

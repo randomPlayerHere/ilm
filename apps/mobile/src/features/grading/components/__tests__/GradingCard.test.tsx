@@ -5,6 +5,7 @@ import type { GradingJobWithResultResponse } from "@ilm/contracts";
 import type { GradingReviewControls } from "../../hooks/useGradingReview";
 import type { GradeApprovalControls } from "../../hooks/useGradeApproval";
 import type { ManualGradingControls } from "../../hooks/useManualGrading";
+import type { PracticeRecommendationsControls } from "../../hooks/usePracticeRecommendations";
 
 // Suppress Animated warning about useNativeDriver in test env
 jest.mock("react-native/Libraries/Animated/NativeAnimatedHelper", () => ({}), { virtual: true });
@@ -58,6 +59,19 @@ function makeApprovalControls(overrides?: Partial<GradeApprovalControls>): Grade
     isApproving: false,
     isApproved: false,
     approvalError: null,
+    ...overrides,
+  };
+}
+
+function makePracticeRecommendationsControls(
+  overrides?: Partial<PracticeRecommendationsControls>,
+): PracticeRecommendationsControls {
+  return {
+    recommendations: ["Practice A", "Practice B"],
+    originalRecommendations: ["Practice A", "Practice B"],
+    modifiedIndices: new Set(),
+    editRecommendation: jest.fn(),
+    resetRecommendation: jest.fn(),
     ...overrides,
   };
 }
@@ -425,7 +439,7 @@ describe("GradingCard", () => {
         />,
       );
       expect(screen.getByText("Approving...")).toBeTruthy();
-      expect(screen.getByRole("button", { name: "Approve grade" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Approve grade" }).props.accessibilityState?.disabled).toBe(true);
     });
 
     it("shows 'Approved ✓' text when isApproved=true and no Approve button", () => {
@@ -751,6 +765,131 @@ describe("GradingCard", () => {
       );
       expect(screen.queryByRole("button", { name: "Retake Photo" })).toBeNull();
       expect(screen.queryByRole("button", { name: "Grade Manually" })).toBeNull();
+    });
+  });
+
+  describe("practice recommendations section (completed state)", () => {
+    it("renders 'Recommended Practice' heading when practiceRecommendationsControls has items", () => {
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          practiceRecommendationsControls={makePracticeRecommendationsControls()}
+        />,
+      );
+      expect(screen.getByText("Recommended Practice")).toBeTruthy();
+    });
+
+    it("renders each recommendation text in a TextInput", () => {
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          practiceRecommendationsControls={makePracticeRecommendationsControls({
+            recommendations: ["Practice A", "Practice B"],
+          })}
+        />,
+      );
+      expect(screen.getByDisplayValue("Practice A")).toBeTruthy();
+      expect(screen.getByDisplayValue("Practice B")).toBeTruthy();
+    });
+
+    it("changing a TextInput calls editRecommendation with index and text", () => {
+      const controls = makePracticeRecommendationsControls({
+        recommendations: ["Practice A", "Practice B"],
+      });
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          practiceRecommendationsControls={controls}
+        />,
+      );
+      fireEvent.changeText(screen.getByDisplayValue("Practice A"), "Modified A");
+      expect(controls.editRecommendation).toHaveBeenCalledWith(0, "Modified A");
+    });
+
+    it("renders 'Teacher modified' text when index is in modifiedIndices", () => {
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          practiceRecommendationsControls={makePracticeRecommendationsControls({
+            recommendations: ["Modified A", "Practice B"],
+            modifiedIndices: new Set([0]),
+          })}
+        />,
+      );
+      expect(screen.getByText("Teacher modified")).toBeTruthy();
+    });
+
+    it("does not render 'Teacher modified' when index is not in modifiedIndices", () => {
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          practiceRecommendationsControls={makePracticeRecommendationsControls({
+            modifiedIndices: new Set(),
+          })}
+        />,
+      );
+      expect(screen.queryByText("Teacher modified")).toBeNull();
+    });
+
+    it("tapping 'Undo' calls resetRecommendation with index", () => {
+      const controls = makePracticeRecommendationsControls({
+        recommendations: ["Modified A", "Practice B"],
+        modifiedIndices: new Set([0]),
+      });
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          practiceRecommendationsControls={controls}
+        />,
+      );
+      fireEvent.press(screen.getByRole("button", { name: "Reset recommendation 1 to AI original" }));
+      expect(controls.resetRecommendation).toHaveBeenCalledWith(0);
+    });
+
+    it("does not render 'Recommended Practice' section when practiceRecommendationsControls is null", () => {
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          practiceRecommendationsControls={null}
+        />,
+      );
+      expect(screen.queryByText("Recommended Practice")).toBeNull();
+    });
+
+    it("does not render 'Recommended Practice' section when recommendations is empty", () => {
+      render(
+        <GradingCard
+          status="completed"
+          result={COMPLETED_RESULT}
+          photoUri={null}
+          error={null}
+          practiceRecommendationsControls={makePracticeRecommendationsControls({
+            recommendations: [],
+          })}
+        />,
+      );
+      expect(screen.queryByText("Recommended Practice")).toBeNull();
     });
   });
 });

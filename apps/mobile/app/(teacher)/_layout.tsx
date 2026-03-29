@@ -69,6 +69,14 @@ export default function TeacherLayout() {
           name="grading"
           options={{ href: null }}
         />
+        <Tabs.Screen
+          name="assignment-history"
+          options={{ href: null }}
+        />
+        <Tabs.Screen
+          name="assignment-detail"
+          options={{ href: null }}
+        />
       </Tabs>
       <CameraFab bottomOffset={layout.tabBarHeight + insets.bottom + 24} />
     </View>

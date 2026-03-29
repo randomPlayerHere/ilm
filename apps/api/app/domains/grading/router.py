@@ -21,11 +21,17 @@ from app.domains.grading.ai_provider import (
     NonMockAIGradingProvider,
 )
 from app.domains.grading.repository import InMemoryGradingRepository
+from app.core.storage import generate_presigned_download_url
 from app.domains.grading.schemas import (
+    ArtifactDownloadUrlResponse,
     ArtifactListResponse,
+    ArtifactRegisterRequest,
+    ArtifactRegisterResponse,
     ArtifactResponse,
     AssignmentCreateRequest,
+    AssignmentListResponse,
     AssignmentResponse,
+    AssignmentSummaryResponse,
     ConfirmRecommendationRequest,
     ConfirmedRecommendationResponse,
     GradeApprovalRequest,
@@ -116,6 +122,61 @@ def _to_artifact_response(artifact: Artifact) -> ArtifactResponse:
     )
 
 
+def _to_artifact_register_response(artifact: Artifact) -> ArtifactRegisterResponse:
+    return ArtifactRegisterResponse(
+        artifact_id=artifact.artifact_id,
+        assignment_id=artifact.assignment_id,
+        student_id=artifact.student_id,
+        class_id=artifact.class_id,
+        org_id=artifact.org_id,
+        teacher_user_id=artifact.teacher_user_id,
+        file_name=artifact.file_name,
+        media_type=artifact.media_type,
+        created_at=artifact.created_at,
+    )
+
+
+@router.get(
+    "/assignments",
+    response_model=AssignmentListResponse,
+)
+async def list_assignments(
+    class_id: str,
+    actor: ActorContext = Depends(require_authenticated_actor),
+    service: GradingService = Depends(get_grading_service),
+) -> AssignmentListResponse:
+    _require_teacher(actor)
+    try:
+        assignments = service.list_assignments_for_class(
+            actor_user_id=actor.user_id,
+            actor_org_id=actor.org_id,
+            class_id=class_id,
+        )
+    except GradingAccessError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
+    summaries = []
+    for a in assignments:
+        artifact_count = len(
+            service.list_artifacts(
+                actor_user_id=actor.user_id,
+                actor_org_id=actor.org_id,
+                assignment_id=a.assignment_id,
+            )
+        )
+        summaries.append(
+            AssignmentSummaryResponse(
+                assignment_id=a.assignment_id,
+                class_id=a.class_id,
+                title=a.title,
+                created_at=a.created_at,
+                artifact_count=artifact_count,
+            )
+        )
+    return AssignmentListResponse(assignments=summaries)
+
+
 @router.post(
     "/assignments",
     response_model=AssignmentResponse,
@@ -199,6 +260,105 @@ async def get_artifact(
     return _to_artifact_response(artifact)
 
 
+@router.post(
+    "/assignments/{assignment_id}/artifacts/register",
+    response_model=ArtifactRegisterResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def register_artifact(
+    assignment_id: str,
+    payload: ArtifactRegisterRequest,
+    actor: ActorContext = Depends(require_authenticated_actor),
+    service: GradingService = Depends(get_grading_service),
+) -> ArtifactRegisterResponse:
+    """Register an artifact that was uploaded directly to S3 via pre-signed URL."""
+    _require_teacher(actor)
+    # Guard: storage_key must be scoped to the actor's org to prevent cross-org key injection
+    expected_prefix = f"orgs/{actor.org_id}/"
+    if not payload.storage_key.startswith(expected_prefix):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    try:
+        artifact = service.create_artifact(
+            actor_user_id=actor.user_id,
+            actor_org_id=actor.org_id,
+            assignment_id=assignment_id,
+            student_id=payload.student_id,
+            file_name=payload.file_name,
+            media_type=payload.media_type,
+            storage_key=payload.storage_key,
+        )
+    except ArtifactFormatError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except GradingAccessError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
+    return _to_artifact_register_response(artifact)
+
+
+@router.get(
+    "/assignments/{assignment_id}/artifacts/{artifact_id}/download-url",
+    response_model=ArtifactDownloadUrlResponse,
+)
+async def get_artifact_download_url(
+    assignment_id: str,
+    artifact_id: str,
+    actor: ActorContext = Depends(require_authenticated_actor),
+    service: GradingService = Depends(get_grading_service),
+) -> ArtifactDownloadUrlResponse:
+    _require_teacher(actor)
+    try:
+        artifact = service.get_artifact(
+            actor_user_id=actor.user_id,
+            actor_org_id=actor.org_id,
+            assignment_id=assignment_id,
+            artifact_id=artifact_id,
+        )
+    except GradingAccessError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
+    # Stub storage keys (s3://stub/...) cannot generate real pre-signed URLs.
+    # In production the storage_key will be a real S3 key from the pre-signed upload flow.
+    if artifact.storage_key.startswith("s3://stub/"):
+        url = artifact.storage_key  # return stub key as-is for local dev
+    else:
+        url = generate_presigned_download_url(artifact.storage_key)
+    return ArtifactDownloadUrlResponse(url=url)
+
+
+@router.get(
+    "/assignments/{assignment_id}/artifacts/{artifact_id}/grading-job",
+    response_model=GradingJobWithResultResponse,
+    responses={404: {"description": "No grading job submitted for this artifact yet"}},
+)
+async def get_artifact_grading_job(
+    assignment_id: str,
+    artifact_id: str,
+    actor: ActorContext = Depends(require_authenticated_actor),
+    service: GradingService = Depends(get_grading_service),
+) -> GradingJobWithResultResponse:
+    """Return the grading job for a specific artifact, or 404 if none exists yet."""
+    _require_teacher(actor)
+    try:
+        job_with_result = service.get_grading_job_for_artifact(
+            actor_user_id=actor.user_id,
+            actor_org_id=actor.org_id,
+            assignment_id=assignment_id,
+            artifact_id=artifact_id,
+        )
+    except GradingAccessError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
+    if job_with_result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No grading job found for this artifact",
+        )
+    return _to_grading_job_with_result_response(job_with_result)
+
+
 @router.get(
     "/assignments/{assignment_id}/artifacts",
     response_model=ArtifactListResponse,
@@ -274,6 +434,7 @@ def _to_grade_approval_response(approval: GradeApproval) -> GradeApprovalRespons
         approver_user_id=approval.approver_user_id,
         approved_at=approval.approved_at,
         version=approval.version,
+        practice_recommendations=approval.practice_recommendations,
     )
 
 
@@ -377,6 +538,7 @@ async def approve_grading_job(
             job_id=job_id,
             approved_score=payload.approved_score,
             approved_feedback=payload.approved_feedback,
+            practice_recommendations=payload.practice_recommendations,
         )
     except GradingAccessError as exc:
         raise HTTPException(

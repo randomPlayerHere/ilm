@@ -47,6 +47,13 @@ export type {
   GradingJobResponse,
   GradingJobWithResultResponse,
   GradeApprovalResponse,
+  ManualGradeRequest,
+  ManualGradeResponse,
   AIConfidenceLevel,
   AIGradingErrorCode,
+  OfflineQueueItemStatus,
+  ArtifactRegisterRequest,
+  ArtifactDownloadUrlResponse,
+  AssignmentSummaryResponse,
+  AssignmentListResponse,
 } from "./grading";

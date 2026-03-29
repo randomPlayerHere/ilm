@@ -50,6 +50,7 @@ export interface GradeApprovalResponse {
   approver_user_id: string;
   approved_at: string;
   version: number;
+  practice_recommendations: string[]; // Added in Story 5.7
 }
 
 export type AIConfidenceLevel = "high" | "medium" | "low";
@@ -60,3 +61,30 @@ export type AIGradingErrorCode =
   | "MODEL_TIMEOUT"
   | "MODEL_ERROR"
   | "RATE_LIMITED";
+
+// Added in Story 5.8
+export type OfflineQueueItemStatus = "pending" | "uploading" | "failed";
+
+// Added in Story 5.9
+export interface ArtifactRegisterRequest {
+  student_id: string;
+  storage_key: string;
+  file_name: string;
+  media_type: string;
+}
+
+export interface ArtifactDownloadUrlResponse {
+  url: string;
+}
+
+export interface AssignmentSummaryResponse {
+  assignment_id: string;
+  class_id: string;
+  title: string;
+  created_at: string;
+  artifact_count: number;
+}
+
+export interface AssignmentListResponse {
+  assignments: AssignmentSummaryResponse[];
+}

@@ -12,10 +12,11 @@ import type { GradingJobWithResultResponse } from "@ilm/contracts";
 import type { GradingReviewControls } from "../hooks/useGradingReview";
 import type { GradeApprovalControls } from "../hooks/useGradeApproval";
 import type { ManualGradingControls } from "../hooks/useManualGrading";
+import type { PracticeRecommendationsControls } from "../hooks/usePracticeRecommendations";
 import { colors, fonts, fontWeights, radii } from "@ilm/design-tokens";
 
 interface GradingCardProps {
-  status: "uploading" | "processing" | "completed" | "failed";
+  status: "uploading" | "processing" | "completed" | "failed" | "queued-offline";
   result: GradingJobWithResultResponse | null;
   photoUri: string | null;
   error: string | null;
@@ -24,7 +25,9 @@ interface GradingCardProps {
   processingHint?: string | null;
   onRetakePhoto?: () => void;
   onGradeManually?: () => void;
+  onRetryOfflineUpload?: () => void;
   manualGradingControls?: ManualGradingControls | null;
+  practiceRecommendationsControls?: PracticeRecommendationsControls | null;
 }
 
 const CONFIDENCE_COLORS: Record<string, string> = {
@@ -59,7 +62,7 @@ function SkeletonBox({ style }: { style?: object }) {
   );
 }
 
-export function GradingCard({ status, result, photoUri, error, reviewControls, approvalControls, processingHint, onRetakePhoto, onGradeManually, manualGradingControls }: GradingCardProps) {
+export function GradingCard({ status, result, photoUri, error, reviewControls, approvalControls, processingHint, onRetakePhoto, onGradeManually, onRetryOfflineUpload, manualGradingControls, practiceRecommendationsControls }: GradingCardProps) {
   const [rubricExpanded, setRubricExpanded] = useState(false);
   const [manualRubricExpanded, setManualRubricExpanded] = useState(false);
   const approvedFadeAnim = useRef(new Animated.Value(approvalControls?.isApproved ? 1 : 0)).current;
@@ -74,6 +77,44 @@ export function GradingCard({ status, result, photoUri, error, reviewControls, a
       Animated.timing(approvedFadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
     }
   }, [approvalControls?.isApproved, approvedFadeAnim, shouldAnimate]);
+
+  if (status === "queued-offline") {
+    return (
+      <View style={styles.card}>
+        <View style={styles.offlineTitleRow}>
+          <Text style={styles.offlineTitle}>Photo Queued</Text>
+          {onRetryOfflineUpload ? (
+            <View style={[styles.offlineBadge, styles.offlineBadgeFailed]}>
+              <Text style={styles.offlineBadgeText}>Upload Failed</Text>
+            </View>
+          ) : (
+            <View style={styles.offlineBadge}>
+              <Text style={styles.offlineBadgeText}>Pending</Text>
+            </View>
+          )}
+        </View>
+        {photoUri ? (
+          <Image source={{ uri: photoUri }} style={styles.thumbnail} accessibilityLabel="Student work" />
+        ) : null}
+        {onRetryOfflineUpload ? (
+          <>
+            <Text style={styles.offlineDetail}>Upload failed after multiple attempts.</Text>
+            <Pressable
+              onPress={onRetryOfflineUpload}
+              accessibilityRole="button"
+              accessibilityLabel="Retry upload"
+              style={styles.retakeButton}
+              hitSlop={8}
+            >
+              <Text style={styles.retakeButtonText}>Upload failed — Tap to retry</Text>
+            </Pressable>
+          </>
+        ) : (
+          <Text style={styles.offlineDetail}>Waiting for connection — will upload automatically</Text>
+        )}
+      </View>
+    );
+  }
 
   if (status === "uploading" || status === "processing") {
     return (
@@ -372,6 +413,35 @@ export function GradingCard({ status, result, photoUri, error, reviewControls, a
           ) : null}
         </View>
       ) : null}
+      {practiceRecommendationsControls != null && practiceRecommendationsControls.recommendations.length > 0 ? (
+        <View style={styles.recommendationsSection}>
+          <Text style={styles.recommendationsHeading}>Recommended Practice</Text>
+          {practiceRecommendationsControls.recommendations.map((rec, index) => (
+            <View key={`rec-${index}`} style={styles.recommendationRow}>
+              <TextInput
+                style={styles.recommendationInput}
+                value={rec}
+                onChangeText={(text) => practiceRecommendationsControls.editRecommendation(index, text)}
+                multiline
+                accessibilityLabel={`Practice recommendation ${index + 1}`}
+              />
+              {practiceRecommendationsControls.modifiedIndices.has(index) ? (
+                <View style={styles.modifiedBadgeRow}>
+                  <Text style={styles.modifiedBadgeText}>Teacher modified</Text>
+                  <Pressable
+                    onPress={() => practiceRecommendationsControls.resetRecommendation(index)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Reset recommendation ${index + 1} to AI original`}
+                    hitSlop={8}
+                  >
+                    <Text style={styles.resetText}>Undo</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </View>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -564,6 +634,82 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontWeight: fontWeights.medium,
     color: colors.textSecondary,
+  },
+  recommendationsSection: {
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: 8,
+  },
+  recommendationsHeading: {
+    fontSize: 14,
+    fontFamily: fonts.body,
+    fontWeight: fontWeights.semibold,
+    color: colors.textPrimary,
+  },
+  recommendationRow: {
+    gap: 4,
+  },
+  recommendationInput: {
+    fontSize: 15,
+    fontFamily: fonts.body,
+    color: colors.textSecondary,
+    lineHeight: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    padding: 8,
+    minHeight: 80,
+    textAlignVertical: "top",
+  },
+  modifiedBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  modifiedBadgeText: {
+    fontSize: 11,
+    fontFamily: fonts.body,
+    color: colors.confidenceMedium,
+    fontStyle: "italic",
+  },
+  resetText: {
+    fontSize: 11,
+    fontFamily: fonts.body,
+    color: colors.primary,
+  },
+  offlineTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  offlineTitle: {
+    fontSize: 17,
+    fontFamily: fonts.heading,
+    fontWeight: fontWeights.semibold,
+    color: colors.textPrimary,
+  },
+  offlineBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: radii.full,
+    backgroundColor: colors.confidenceMedium,
+  },
+  offlineBadgeFailed: {
+    backgroundColor: colors.error,
+  },
+  offlineBadgeText: {
+    fontSize: 12,
+    fontFamily: fonts.body,
+    fontWeight: fontWeights.semibold,
+    color: colors.textInverse,
+  },
+  offlineDetail: {
+    fontSize: 14,
+    fontFamily: fonts.body,
+    color: colors.textSecondary,
+    textAlign: "center",
   },
   errorTitle: {
     fontSize: 17,

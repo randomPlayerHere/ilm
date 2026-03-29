@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react-native";
 import { useGradeApproval } from "../useGradeApproval";
 import type { GradingJobWithResultResponse } from "@ilm/contracts";
 import type { GradingReviewControls } from "../useGradingReview";
+import type { PracticeRecommendationsControls } from "../usePracticeRecommendations";
 
 jest.mock('../../../../services/grading-service', () => ({ approveGradingJob: jest.fn() }));
 jest.mock('../../../../services/token-storage', () => ({ getAuthData: jest.fn() }));
@@ -110,7 +111,7 @@ describe("useGradeApproval", () => {
     expect(result.current?.isApproved).toBe(true);
   });
 
-  it("calls approveGradingJob with correct arguments", async () => {
+  it("calls approveGradingJob with correct arguments (no practice recs — sends empty array)", async () => {
     const approvalResponse = {
       job_id: 'job_1',
       approved_score: '85',
@@ -118,6 +119,7 @@ describe("useGradeApproval", () => {
       approver_user_id: 'user_1',
       approved_at: '2026-03-27T00:00:00Z',
       version: 1,
+      practice_recommendations: [],
     };
     mockGetAuthData.mockResolvedValue({ token: 'tok_1', role: 'teacher', homePath: '/', email: 'test@test.com' });
     mockApproveGradingJob.mockResolvedValue(approvalResponse);
@@ -130,7 +132,122 @@ describe("useGradeApproval", () => {
       result.current!.approve();
     });
 
-    expect(mockApproveGradingJob).toHaveBeenCalledWith('asgn_1', 'job_1', '85', 'Good work.', 'tok_1');
+    expect(mockApproveGradingJob).toHaveBeenCalledWith('asgn_1', 'job_1', '85', 'Good work.', 'tok_1', []);
+  });
+
+  it("passes practice recommendations to approveGradingJob when provided", async () => {
+    const approvalResponse = {
+      job_id: 'job_1',
+      approved_score: '85',
+      approved_feedback: 'Good work.',
+      approver_user_id: 'user_1',
+      approved_at: '2026-03-27T00:00:00Z',
+      version: 1,
+      practice_recommendations: ['Practice A'],
+    };
+    mockGetAuthData.mockResolvedValue({ token: 'tok_1', role: 'teacher', homePath: '/', email: 'test@test.com' });
+    mockApproveGradingJob.mockResolvedValue(approvalResponse);
+
+    const mockPracticeControls: PracticeRecommendationsControls = {
+      recommendations: ['Practice A'],
+      originalRecommendations: ['Practice A'],
+      modifiedIndices: new Set(),
+      editRecommendation: jest.fn(),
+      resetRecommendation: jest.fn(),
+    };
+
+    const { result } = renderHook(() =>
+      useGradeApproval(
+        makeResult({ assignment_id: 'asgn_1', job_id: 'job_1' }),
+        makeReviewControls({ scoreValue: 85, feedbackValue: 'Good work.' }),
+        mockPracticeControls,
+      ),
+    );
+
+    await act(async () => {
+      result.current!.approve();
+    });
+
+    expect(mockApproveGradingJob).toHaveBeenCalledWith('asgn_1', 'job_1', '85', 'Good work.', 'tok_1', ['Practice A']);
+  });
+
+  it("passes empty array when practiceRecommendationsControls is null", async () => {
+    const approvalResponse = {
+      job_id: 'job_1',
+      approved_score: '85',
+      approved_feedback: 'Good work.',
+      approver_user_id: 'user_1',
+      approved_at: '2026-03-27T00:00:00Z',
+      version: 1,
+      practice_recommendations: [],
+    };
+    mockGetAuthData.mockResolvedValue({ token: 'tok_1', role: 'teacher', homePath: '/', email: 'test@test.com' });
+    mockApproveGradingJob.mockResolvedValue(approvalResponse);
+
+    const { result } = renderHook(() =>
+      useGradeApproval(
+        makeResult({ assignment_id: 'asgn_1', job_id: 'job_1' }),
+        makeReviewControls({ scoreValue: 85, feedbackValue: 'Good work.' }),
+        null,
+      ),
+    );
+
+    await act(async () => {
+      result.current!.approve();
+    });
+
+    expect(mockApproveGradingJob).toHaveBeenCalledWith('asgn_1', 'job_1', '85', 'Good work.', 'tok_1', []);
+  });
+
+  it("sends edited recommendations when practiceRecommendationsControls updates before approve", async () => {
+    // Regression: approve() was capturing a stale closure because practiceRecommendationsControls
+    // was missing from the useCallback dependency array.
+    const approvalResponse = {
+      job_id: 'job_1',
+      approved_score: '85',
+      approved_feedback: 'Good work.',
+      approver_user_id: 'user_1',
+      approved_at: '2026-03-27T00:00:00Z',
+      version: 1,
+      practice_recommendations: ['Edited rec'],
+    };
+    mockGetAuthData.mockResolvedValue({ token: 'tok_1', role: 'teacher', homePath: '/', email: 'test@test.com' });
+    mockApproveGradingJob.mockResolvedValue(approvalResponse);
+
+    const initialControls: PracticeRecommendationsControls = {
+      recommendations: ['Original rec'],
+      originalRecommendations: ['Original rec'],
+      modifiedIndices: new Set(),
+      editRecommendation: jest.fn(),
+      resetRecommendation: jest.fn(),
+    };
+    const updatedControls: PracticeRecommendationsControls = {
+      recommendations: ['Edited rec'],
+      originalRecommendations: ['Original rec'],
+      modifiedIndices: new Set([0]),
+      editRecommendation: jest.fn(),
+      resetRecommendation: jest.fn(),
+    };
+
+    const { result, rerender } = renderHook(
+      ({ p }: { p: PracticeRecommendationsControls }) =>
+        useGradeApproval(
+          makeResult({ assignment_id: 'asgn_1', job_id: 'job_1' }),
+          makeReviewControls({ scoreValue: 85, feedbackValue: 'Good work.' }),
+          p,
+        ),
+      { initialProps: { p: initialControls } },
+    );
+
+    // Simulate teacher editing a recommendation before tapping Approve
+    rerender({ p: updatedControls });
+
+    await act(async () => {
+      result.current!.approve();
+    });
+
+    // Must send the edited value, not the original stale closure value
+    expect(mockApproveGradingJob).toHaveBeenCalledWith('asgn_1', 'job_1', '85', 'Good work.', 'tok_1', ['Edited rec']);
   });
 
   it("on API rejection, rolls back — isApproved=false, approvalError set", async () => {

@@ -120,6 +120,22 @@ class GradingService:
         )
         return self._to_assignment(record)
 
+    def list_assignments_for_class(
+        self,
+        actor_user_id: str,
+        actor_org_id: str,
+        class_id: str,
+    ) -> list[Assignment]:
+        class_context = self._repository.get_class_context(class_id)
+        if class_context is None:
+            raise GradingAccessError("Forbidden")
+        if class_context.org_id != actor_org_id:
+            raise GradingAccessError("Forbidden")
+        if class_context.teacher_user_id != actor_user_id:
+            raise GradingAccessError("Forbidden")
+        records = self._repository.list_assignments_for_class(class_id, actor_org_id)
+        return [self._to_assignment(r) for r in records]
+
     def create_artifact(
         self,
         actor_user_id: str,
@@ -128,6 +144,7 @@ class GradingService:
         student_id: str,
         file_name: str,
         media_type: str,
+        storage_key: str | None = None,
     ) -> Artifact:
         # Ownership check runs first: unknown/cross-tenant assignments always 403 regardless of payload
         assignment = self._repository.get_assignment(assignment_id)
@@ -161,6 +178,7 @@ class GradingService:
             teacher_user_id=actor_user_id,
             file_name=file_name,
             media_type=media_type,
+            storage_key=storage_key,
         )
         return self._to_artifact(record)
 
@@ -342,6 +360,45 @@ class GradingService:
             completed_at=now,
         )
 
+    def get_grading_job_for_artifact(
+        self,
+        actor_user_id: str,
+        actor_org_id: str,
+        assignment_id: str,
+        artifact_id: str,
+    ) -> GradingJobWithResult | None:
+        """Return the grading job for a specific artifact, or None if no job exists yet."""
+        artifact = self._repository.get_artifact(artifact_id)
+        if artifact is None:
+            raise GradingAccessError("Forbidden")
+        if artifact.assignment_id != assignment_id:
+            raise GradingAccessError("Forbidden")
+        if artifact.org_id != actor_org_id or artifact.teacher_user_id != actor_user_id:
+            raise GradingAccessError("Forbidden")
+
+        job = self._repository.get_grading_job_for_artifact(artifact_id)
+        if job is None:
+            return None
+
+        result: GradingResult | None = None
+        if job.status == "completed":
+            result_record = self._repository.get_grading_result(job.job_id)
+            if result_record is not None:
+                result = self._to_grading_result(result_record)
+
+        is_approved = self._repository.get_grade_approval(job.job_id) is not None
+        return GradingJobWithResult(
+            job_id=job.job_id,
+            artifact_id=job.artifact_id,
+            assignment_id=job.assignment_id,
+            status=job.status,
+            attempt_count=job.attempt_count,
+            submitted_at=job.submitted_at,
+            completed_at=job.completed_at,
+            result=result,
+            is_approved=is_approved,
+        )
+
     def get_grading_job_status(
         self,
         actor_user_id: str,
@@ -410,6 +467,7 @@ class GradingService:
         job_id: str,
         approved_score: str,
         approved_feedback: str,
+        practice_recommendations: list[str] | None = None,
     ) -> GradeApproval:
         job = self._repository.get_grading_job_by_id(job_id)
         if job is None:
@@ -440,6 +498,7 @@ class GradingService:
             approver_user_id=actor_user_id,
             version=new_version,
             approved_at=now,
+            practice_recommendations=practice_recommendations if practice_recommendations is not None else [],
         )
         return self._to_grade_approval(record)
 
@@ -487,6 +546,7 @@ class GradingService:
             approver_user_id=record.approver_user_id,
             approved_at=record.approved_at,
             version=record.version,
+            practice_recommendations=record.practice_recommendations,
         )
 
     def _to_grade_version(self, record: GradeVersionRecord) -> GradeVersion:
@@ -812,6 +872,7 @@ class GradeApproval:
     approver_user_id: str
     approved_at: str
     version: int
+    practice_recommendations: list[str] = field(default_factory=list)  # Added in Story 5.7
 
 
 @dataclass(frozen=True)

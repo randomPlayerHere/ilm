@@ -80,7 +80,7 @@ describe("useManualGrading", () => {
   });
 
   it("submit() sets isSubmitting=true before API resolves", async () => {
-    let resolveSubmit!: () => void;
+    let resolveSubmit!: (value: any) => void;
     const pendingPromise = new Promise<any>((resolve) => { resolveSubmit = resolve; });
     mockGetAuthData.mockResolvedValue({ token: "tok_1", role: "teacher", homePath: "/", email: "test@test.com" });
     mockSubmitManualGrade.mockReturnValue(pendingPromise);
@@ -157,7 +157,7 @@ describe("useManualGrading", () => {
   });
 
   it("submit() no-op when submitState === 'loading'", async () => {
-    let resolveSubmit!: () => void;
+    let resolveSubmit!: (value: any) => void;
     const pendingPromise = new Promise<any>((resolve) => { resolveSubmit = resolve; });
     mockGetAuthData.mockResolvedValue({ token: "tok_1", role: "teacher", homePath: "/", email: "test@test.com" });
     mockSubmitManualGrade.mockReturnValue(pendingPromise);

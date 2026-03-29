@@ -72,6 +72,7 @@ async def get_student_grades(
             approved_at=r.approved_at,
             approver_user_id=r.approver_user_id,
             version=r.version,
+            practice_recommendations=r.practice_recommendations,
         )
         for r in records
     ]

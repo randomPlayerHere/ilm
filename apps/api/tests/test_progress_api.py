@@ -1052,3 +1052,70 @@ def test_topic_insights_org_isolation_repo_layer() -> None:
     insights, has_sufficient_data = repo.list_topic_insights_for_student("stu_other_org_1", "org_demo_1")
     assert insights == []
     assert has_sufficient_data is False
+
+
+# ---------------------------------------------------------------------------
+# Test 32: Story 5.7 — approved practice_recommendations surfaced in grades endpoint (AC3)
+# ---------------------------------------------------------------------------
+
+
+def test_approved_practice_recommendations_surfaced_in_grades_response() -> None:
+    """AC3: practice_recommendations stored with approval are returned in the progress grades response.
+
+    Verifies the full chain: approval stored with recs → ApprovedGradeRecord carries recs →
+    progress router maps them into ApprovedGradeResponse → student/parent can retrieve them.
+    """
+    reset_progress_state_for_tests()
+    reset_auth_state_for_tests()
+
+    repo = InMemoryGradingRepository()
+    assignment = repo.create_assignment(
+        class_id="cls_demo_math_1",
+        org_id="org_demo_1",
+        teacher_user_id="usr_teacher_1",
+        title="Practice Recs Assignment",
+    )
+    artifact = repo.create_artifact(
+        assignment_id=assignment.assignment_id,
+        student_id="usr_student_1",
+        class_id="cls_demo_math_1",
+        org_id="org_demo_1",
+        teacher_user_id="usr_teacher_1",
+        file_name="work.pdf",
+        media_type="application/pdf",
+    )
+    job = repo.create_grading_job(
+        artifact_id=artifact.artifact_id,
+        assignment_id=assignment.assignment_id,
+        org_id="org_demo_1",
+        teacher_user_id="usr_teacher_1",
+    )
+    repo.save_grading_result(
+        job_id=job.job_id,
+        proposed_score="80",
+        rubric_mapping={},
+        draft_feedback="Good work.",
+    )
+    repo.upsert_grade_approval(
+        job_id=job.job_id,
+        approved_score="85",
+        approved_feedback="Well done.",
+        approver_user_id="usr_teacher_1",
+        version=1,
+        approved_at=datetime.now(UTC).isoformat(),
+        practice_recommendations=["Practice fractions", "Review chapter 3"],
+    )
+
+    async def scenario() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            resp = await client.get(
+                "/progress/students/usr_student_1/grades",
+                headers=_student_headers(),
+            )
+            assert resp.status_code == 200
+            grades = resp.json()["grades"]
+            assert len(grades) == 1
+            assert grades[0]["practice_recommendations"] == ["Practice fractions", "Review chapter 3"]
+
+    asyncio.run(scenario())

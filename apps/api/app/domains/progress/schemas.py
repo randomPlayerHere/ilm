@@ -14,6 +14,7 @@ class ApprovedGradeResponse(BaseModel):
     approved_at: str
     approver_user_id: str
     version: int
+    practice_recommendations: list[str] = []
 
 
 class ApprovedGradeListResponse(BaseModel):

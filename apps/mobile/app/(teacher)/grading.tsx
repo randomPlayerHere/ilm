@@ -9,6 +9,10 @@ import { useGradingJob } from "../../src/features/grading/hooks/useGradingJob";
 import { useGradingReview } from "../../src/features/grading/hooks/useGradingReview";
 import { useGradeApproval } from "../../src/features/grading/hooks/useGradeApproval";
 import { useManualGrading } from "../../src/features/grading/hooks/useManualGrading";
+import { usePracticeRecommendations } from "../../src/features/grading/hooks/usePracticeRecommendations";
+import { useOfflineQueueProcessor } from "../../src/features/grading/hooks/useOfflineQueueProcessor";
+import { onQueueJobComplete } from "../../src/services/queue-events";
+import { useNetworkStatus } from "../../src/hooks/useNetworkStatus";
 
 export default function GradingScreen() {
   const router = useRouter();
@@ -24,7 +28,7 @@ export default function GradingScreen() {
 
   // Hook must be called unconditionally — pass empty strings if params missing;
   // missingParams overrides the display status below so no bad request is acted on.
-  const { status: hookStatus, result, error: hookError, photoUri, retrying } = useGradingJob(
+  const { status: hookStatus, result, error: hookError, photoUri, retrying, queueItemId } = useGradingJob(
     classId ?? '',
     studentId ?? '',
     assignmentId,
@@ -38,15 +42,45 @@ export default function GradingScreen() {
       : hookStatus;
   const error = missingParams ? 'Missing assignment context — please try again.' : hookError;
 
+  // Offline queue processor — manages auto-upload of queued photos on reconnect
+  const { pendingCount, queueItems, retryItem } = useOfflineQueueProcessor();
+
+  // Live connectivity state — drives the offline indicator banner
+  const { isConnected } = useNetworkStatus();
+
+  // Determine if the current queued item has permanently failed (3+ attempts)
+  const currentQueueItem = queueItemId ? queueItems.find((i) => i.id === queueItemId) : null;
+  const uploadPermanentlyFailed =
+    currentQueueItem?.status === "failed" && (currentQueueItem?.attemptCount ?? 0) >= 3;
+
+  // When a queued item's job is submitted successfully, navigate back to the student list.
+  // The AI grading job continues on the server; results arrive via server-sent push notifications.
+  // In-app polling is not resumed here because useGradingJob requires a fresh pendingCapture to
+  // initialise — there is no resume-by-jobId path yet. Resuming polling from an offline upload
+  // is a future enhancement; for MVP the teacher is notified via push when the result is ready.
+  useEffect(() => {
+    if (status !== "queued-offline") return;
+    const unsubscribe = onQueueJobComplete(() => {
+      router.back();
+    });
+    return unsubscribe;
+  }, [status, router]);
+
   // Review controls are only active when grading is completed and result is available
   const reviewControls = useGradingReview(
     status === 'completed' && result?.result != null ? result : null,
   );
 
-  // Approval controls compose on top of review controls
+  // Practice recommendations hook — only active in completed state
+  const practiceRecommendationsControls = usePracticeRecommendations(
+    status === 'completed' && result?.result != null ? result : null,
+  );
+
+  // Approval controls compose on top of review controls and practice recommendations
   const approvalControls = useGradeApproval(
     status === 'completed' && result?.result != null ? result : null,
     reviewControls,
+    practiceRecommendationsControls,
   );
 
   // Processing hint for retry indicator
@@ -162,6 +196,18 @@ export default function GradingScreen() {
           </Text>
         </View>
       ) : null}
+      {isConnected === false ? (
+        <View style={styles.offlineIndicatorBanner}>
+          <Text style={styles.offlineIndicatorText}>No internet connection</Text>
+        </View>
+      ) : null}
+      {pendingCount > 0 ? (
+        <View style={styles.pendingBanner}>
+          <Text style={styles.pendingBannerText}>
+            {pendingCount} {pendingCount === 1 ? "photo" : "photos"} pending upload
+          </Text>
+        </View>
+      ) : null}
 
       <View style={styles.content}>
         <GradingCard
@@ -174,7 +220,13 @@ export default function GradingScreen() {
           processingHint={processingHint}
           onRetakePhoto={status === 'failed' && !isManualGrading ? handleRetakePhoto : undefined}
           onGradeManually={status === 'failed' && !isManualGrading ? handleGradeManually : undefined}
+          onRetryOfflineUpload={
+            status === 'queued-offline' && uploadPermanentlyFailed && queueItemId
+              ? () => retryItem(queueItemId)
+              : undefined
+          }
           manualGradingControls={isManualGrading ? manualGradingControls : null}
+          practiceRecommendationsControls={status === 'completed' ? practiceRecommendationsControls : null}
         />
       </View>
 
@@ -207,6 +259,36 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontWeight: fontWeights.medium,
     color: colors.textSecondary,
+  },
+  offlineIndicatorBanner: {
+    marginHorizontal: 20,
+    marginTop: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: colors.error,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  offlineIndicatorText: {
+    fontSize: 12,
+    fontFamily: fonts.body,
+    fontWeight: fontWeights.medium,
+    color: colors.textInverse,
+  },
+  pendingBanner: {
+    marginHorizontal: 20,
+    marginTop: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  pendingBannerText: {
+    fontSize: 12,
+    fontFamily: fonts.body,
+    fontWeight: fontWeights.medium,
+    color: colors.confidenceMedium,
   },
   content: {
     flex: 1,

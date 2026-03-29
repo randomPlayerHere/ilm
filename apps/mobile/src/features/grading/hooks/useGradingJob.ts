@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import NetInfo from "@react-native-community/netinfo";
 import type { GradingJobWithResultResponse } from "@ilm/contracts";
 import { ApiError } from "../../../services/api-client";
 import { getAuthData } from "../../../services/token-storage";
@@ -6,11 +7,20 @@ import { clearPendingCapture, getPendingCapture } from "../pending-capture-store
 import {
   createAssignment,
   getGradingJob,
+  getPresignedUploadUrl,
+  registerArtifact,
   submitGradingJob,
-  uploadArtifact,
+  uploadToPresignedUrl,
 } from "../../../services/grading-service";
+import { addToOfflineQueue } from "../../../services/offline-queue";
 
-export type GradingJobStatus = "idle" | "uploading" | "processing" | "completed" | "failed";
+export type GradingJobStatus =
+  | "idle"
+  | "uploading"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "queued-offline";
 
 export interface GradingJobState {
   status: GradingJobStatus;
@@ -18,6 +28,7 @@ export interface GradingJobState {
   error: string | null;
   photoUri: string | null;
   retrying: boolean;
+  queueItemId: string | null;
 }
 
 export function useGradingJob(classId: string, studentId: string, assignmentId?: string): GradingJobState {
@@ -27,6 +38,7 @@ export function useGradingJob(classId: string, studentId: string, assignmentId?:
     error: null,
     photoUri: null,
     retrying: false,
+    queueItemId: null,
   });
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -63,11 +75,6 @@ export function useGradingJob(classId: string, studentId: string, assignmentId?:
           }
         } catch (err: unknown) {
           if (!isMountedRef.current) return;
-          attemptRef.current += 1;
-          if (attemptRef.current > 30) {
-            setState((s) => ({ ...s, status: "failed", error: "Request timed out" }));
-            return;
-          }
           // 4xx errors are fatal — retrying with the same credentials won't recover
           if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
             setState((s) => ({ ...s, status: "failed", error: err.message }));
@@ -92,6 +99,8 @@ export function useGradingJob(classId: string, studentId: string, assignmentId?:
           result: null,
           error: "Session expired — please sign in again",
           photoUri: null,
+          retrying: false,
+          queueItemId: null,
         });
         return;
       }
@@ -105,32 +114,75 @@ export function useGradingJob(classId: string, studentId: string, assignmentId?:
           result: null,
           error: "No photo available for grading",
           photoUri: null,
+          retrying: false,
+          queueItemId: null,
         });
         return;
       }
       const photoUri = pendingCapture.compressedUri;
 
-      // Set initial state with photoUri
-      setState({ status: "uploading", result: null, error: null, photoUri, retrying: false });
+      // 3. Check connectivity — divert to offline queue if no connection
+      const netState = await NetInfo.fetch();
+      if (!netState.isConnected) {
+        try {
+          const queueItem = await addToOfflineQueue({
+            classId,
+            studentId,
+            assignmentId,
+            persistedPhotoUri: pendingCapture.compressedUri,
+            originalUri: pendingCapture.originalUri,
+            capturedAt: pendingCapture.capturedAt,
+            width: pendingCapture.width,
+            height: pendingCapture.height,
+          });
+          // Photo is now persisted — clear the in-memory pending capture
+          clearPendingCapture();
+          if (!isMountedRef.current) return;
+          setState({
+            status: "queued-offline",
+            result: null,
+            error: null,
+            photoUri,
+            retrying: false,
+            queueItemId: queueItem.id,
+          });
+        } catch (err: unknown) {
+          if (!isMountedRef.current) return;
+          const message = err instanceof Error ? err.message : "Failed to save photo for offline grading";
+          setState((s) => ({ ...s, status: "failed", error: message, queueItemId: null }));
+        }
+        return;
+      }
+
+      // 4. Online path — set initial state with photoUri
+      setState({ status: "uploading", result: null, error: null, photoUri, retrying: false, queueItemId: null });
 
       try {
-        // 3. Create assignment (skip if assignmentId provided — retake flow reuses existing)
+        // 5. Create assignment (skip if assignmentId provided — retake flow reuses existing)
         const title = `Assignment ${new Date().toLocaleDateString()}`;
         const assignment_id = assignmentId ?? (await createAssignment(classId, title, token)).assignment_id;
         if (!isMountedRef.current) return;
 
-        // 4. Upload artifact
-        const { artifact_id } = await uploadArtifact(assignment_id, studentId, photoUri, token);
+        // 6. Upload artifact via pre-signed URL flow (3 steps)
+        const { url: presignedUrl, key: storageKey } = await getPresignedUploadUrl(
+          classId, studentId, assignment_id, "assignment.jpg", token,
+        );
+        if (!isMountedRef.current) return;
+        await uploadToPresignedUrl(presignedUrl, photoUri);
+        if (!isMountedRef.current) return;
+        const { artifact_id } = await registerArtifact(
+          assignment_id, storageKey, studentId, "assignment.jpg", "image/jpeg", token,
+        );
         if (!isMountedRef.current) return;
 
-        // 5. Submit grading job
+        // 7. Submit grading job
         const gradingJob = await submitGradingJob(assignment_id, artifact_id, token);
         if (!isMountedRef.current) return;
 
-        // 6. Clear pending capture after successful upload and job submission
+        // 8. Clear pending capture after successful upload and job submission
         clearPendingCapture();
 
-        // 7. Start polling
+        // 9. Start polling
         setState((s) => ({ ...s, status: "processing" }));
         scheduleNextPoll(assignment_id, gradingJob.job_id, token);
       } catch (err: unknown) {

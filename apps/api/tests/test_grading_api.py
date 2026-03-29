@@ -1519,3 +1519,158 @@ def test_get_confirmed_recommendations_forbidden_when_not_confirmed() -> None:
             assert resp.status_code == 403
 
     asyncio.run(scenario())
+
+
+# --- Story 5.9: Artifact register, assignment list, download URL ---
+
+
+def test_register_artifact_success() -> None:
+    """POST /grading/assignments/{id}/artifacts/register stores provided storage_key."""
+
+    async def scenario() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
+            assignment_id = await _create_assignment(client)
+            resp = await client.post(
+                f"/grading/assignments/{assignment_id}/artifacts/register",
+                headers=_teacher_headers(),
+                json={
+                    "student_id": "stu_demo_1",
+                    "storage_key": "orgs/org_demo_1/cls_demo_math_1/stu_demo_1/asgn_1/uuid.jpg",
+                    "file_name": "assignment.jpg",
+                    "media_type": "image/jpeg",
+                },
+            )
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["artifact_id"].startswith("artf_")
+        assert body["storage_key"] == "orgs/org_demo_1/cls_demo_math_1/stu_demo_1/asgn_1/uuid.jpg"
+        assert body["file_name"] == "assignment.jpg"
+
+    asyncio.run(scenario())
+
+
+def test_register_artifact_unsupported_media_type_returns_422() -> None:
+    async def scenario() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
+            assignment_id = await _create_assignment(client)
+            resp = await client.post(
+                f"/grading/assignments/{assignment_id}/artifacts/register",
+                headers=_teacher_headers(),
+                json={
+                    "student_id": "stu_demo_1",
+                    "storage_key": "orgs/org_demo_1/cls/stu/asgn/uuid.doc",
+                    "file_name": "assignment.doc",
+                    "media_type": "application/msword",
+                },
+            )
+        assert resp.status_code == 422
+
+    asyncio.run(scenario())
+
+
+def test_register_artifact_unknown_assignment_returns_403() -> None:
+    async def scenario() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
+            resp = await client.post(
+                "/grading/assignments/asgn_unknown/artifacts/register",
+                headers=_teacher_headers(),
+                json={
+                    "student_id": "stu_demo_1",
+                    "storage_key": "orgs/org_demo_1/cls/stu/asgn/uuid.jpg",
+                    "file_name": "photo.jpg",
+                    "media_type": "image/jpeg",
+                },
+            )
+        assert resp.status_code == 403
+
+    asyncio.run(scenario())
+
+
+def test_list_assignments_for_class_returns_created_assignments() -> None:
+    """GET /grading/assignments?class_id= returns assignments for the teacher's class."""
+
+    async def scenario() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
+            await _create_assignment(client, title="Quiz 1")
+            await _create_assignment(client, title="Quiz 2")
+            resp = await client.get(
+                "/grading/assignments?class_id=cls_demo_math_1",
+                headers=_teacher_headers(),
+            )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "assignments" in body
+        titles = [a["title"] for a in body["assignments"]]
+        assert "Quiz 1" in titles
+        assert "Quiz 2" in titles
+        for assignment in body["assignments"]:
+            assert "artifact_count" in assignment
+            assert isinstance(assignment["artifact_count"], int)
+
+    asyncio.run(scenario())
+
+
+def test_list_assignments_unknown_class_returns_403() -> None:
+    async def scenario() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
+            resp = await client.get(
+                "/grading/assignments?class_id=cls_unknown",
+                headers=_teacher_headers(),
+            )
+        assert resp.status_code == 403
+
+    asyncio.run(scenario())
+
+
+def test_get_artifact_download_url_stub_returns_stub_key() -> None:
+    """For stub-uploaded artifacts, download-url returns the stub storage key."""
+
+    async def scenario() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
+            assignment_id = await _create_assignment(client)
+            artifact_id = await _upload_artifact(client, assignment_id)
+            resp = await client.get(
+                f"/grading/assignments/{assignment_id}/artifacts/{artifact_id}/download-url",
+                headers=_teacher_headers(),
+            )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "url" in body
+        # Stub artifacts return the stub key directly
+        assert "stub" in body["url"] or body["url"].startswith("s3://")
+
+    asyncio.run(scenario())
+
+
+def test_get_artifact_download_url_unknown_artifact_returns_403() -> None:
+    async def scenario() -> None:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
+            assignment_id = await _create_assignment(client)
+            resp = await client.get(
+                f"/grading/assignments/{assignment_id}/artifacts/artf_unknown/download-url",
+                headers=_teacher_headers(),
+            )
+        assert resp.status_code == 403
+
+    asyncio.run(scenario())

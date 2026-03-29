@@ -84,6 +84,7 @@ class GradeApprovalRequest(BaseModel):
 
     approved_score: Annotated[str, StringConstraints(min_length=1, max_length=50)]
     approved_feedback: Annotated[str, StringConstraints(min_length=1, max_length=2000)]
+    practice_recommendations: list[Annotated[str, StringConstraints(max_length=500)]] = []  # Added in Story 5.7
 
 
 class GradeApprovalResponse(BaseModel):
@@ -93,6 +94,7 @@ class GradeApprovalResponse(BaseModel):
     approver_user_id: str
     approved_at: str
     version: int
+    practice_recommendations: list[str]  # Added in Story 5.7
 
 
 class GradeVersionResponse(BaseModel):
@@ -165,3 +167,42 @@ class ConfirmedRecommendationResponse(BaseModel):
     topics: list[RecommendationTopicItem]
     confirmed_by: str
     confirmed_at: str
+
+
+class ArtifactRegisterRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    student_id: Annotated[str, StringConstraints(min_length=1, max_length=128)]
+    storage_key: Annotated[str, StringConstraints(min_length=1, max_length=1024)]
+    file_name: Annotated[str, StringConstraints(min_length=1, max_length=255)]
+    media_type: Annotated[str, StringConstraints(min_length=1, max_length=128)]
+
+
+class ArtifactRegisterResponse(BaseModel):
+    """Response for register-artifact endpoint. Omits storage_key — raw S3 paths must not be exposed."""
+
+    artifact_id: str
+    assignment_id: str
+    student_id: str
+    class_id: str
+    org_id: str
+    teacher_user_id: str
+    file_name: str
+    media_type: str
+    created_at: str
+
+
+class ArtifactDownloadUrlResponse(BaseModel):
+    url: str
+
+
+class AssignmentSummaryResponse(BaseModel):
+    assignment_id: str
+    class_id: str
+    title: str
+    created_at: str
+    artifact_count: int
+
+
+class AssignmentListResponse(BaseModel):
+    assignments: list[AssignmentSummaryResponse]

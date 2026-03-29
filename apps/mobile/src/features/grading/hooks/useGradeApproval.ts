@@ -3,6 +3,7 @@ import type { GradingJobWithResultResponse } from "@ilm/contracts";
 import { getAuthData } from "../../../services/token-storage";
 import { approveGradingJob } from "../../../services/grading-service";
 import type { GradingReviewControls } from "./useGradingReview";
+import type { PracticeRecommendationsControls } from "./usePracticeRecommendations";
 
 export interface GradeApprovalControls {
   approve: () => void;
@@ -16,6 +17,7 @@ type ApprovalState = "idle" | "loading" | "approved" | "error";
 export function useGradeApproval(
   result: GradingJobWithResultResponse | null,
   reviewControls: GradingReviewControls | null,
+  practiceRecommendationsControls?: PracticeRecommendationsControls | null,
 ): GradeApprovalControls | null {
   const [approvalState, setApprovalState] = useState<ApprovalState>("idle");
   const [isApproved, setIsApproved] = useState<boolean>(result?.is_approved ?? false);
@@ -61,6 +63,7 @@ export function useGradeApproval(
         String(reviewControls.scoreValue),
         reviewControls.feedbackValue,
         authData.token,
+        practiceRecommendationsControls?.recommendations ?? [],
       );
       if (!isMountedRef.current) return;
       setApprovalState("approved");
@@ -71,7 +74,7 @@ export function useGradeApproval(
       setIsApproved(false);
       setApprovalError(message);
     }
-  }, [result, reviewControls]);
+  }, [result, reviewControls, practiceRecommendationsControls]);
 
   if (result === null) return null;
 

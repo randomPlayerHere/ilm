@@ -33,13 +33,25 @@ def _make_s3_client() -> boto3.client:
 def generate_presigned_upload_url(
     org_id: str,
     filename: str,
+    *,
+    class_id: str = "",
+    student_id: str = "",
+    assignment_id: str = "",
 ) -> dict[str, str]:
     """Generate a time-limited pre-signed PUT URL for uploading an assignment file.
 
     The object key is org-scoped and server-determined — never trusted from the client.
-    Returns {"url": "...", "key": "orgs/{org_id}/assignments/{uuid}/{filename}"}.
+
+    When class_id, student_id, and assignment_id are all provided, the key uses
+    the scoped path: orgs/{org_id}/{class_id}/{student_id}/{assignment_id}/{uuid}.jpg
+    Otherwise falls back to the legacy path:
+    orgs/{org_id}/assignments/{uuid}/{filename}
     """
-    key = f"orgs/{org_id}/assignments/{uuid.uuid4()}/{filename}"
+    if class_id and student_id and assignment_id:
+        key = f"orgs/{org_id}/{class_id}/{student_id}/{assignment_id}/{uuid.uuid4()}.jpg"
+    else:
+        key = f"orgs/{org_id}/assignments/{uuid.uuid4()}/{filename}"
+
     client = _make_s3_client()
     url = client.generate_presigned_url(
         "put_object",
@@ -47,3 +59,18 @@ def generate_presigned_upload_url(
         ExpiresIn=_PRESIGNED_URL_EXPIRY_SECONDS,
     )
     return {"url": url, "key": key}
+
+
+def generate_presigned_download_url(storage_key: str) -> str:
+    """Generate a time-limited pre-signed GET URL for downloading a stored artifact.
+
+    Returns the signed URL string. Caller is responsible for org-scope validation
+    before calling this function.
+    """
+    client = _make_s3_client()
+    url = client.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": settings.s3_bucket, "Key": storage_key},
+        ExpiresIn=_PRESIGNED_URL_EXPIRY_SECONDS,
+    )
+    return url

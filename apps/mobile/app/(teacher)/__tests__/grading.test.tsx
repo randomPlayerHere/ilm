@@ -52,6 +52,29 @@ jest.mock("../../../src/features/grading/hooks/useManualGrading", () => ({
   useManualGrading: (...args: unknown[]) => mockUseManualGrading(...args),
 }));
 
+const mockUsePracticeRecommendations = jest.fn();
+jest.mock("../../../src/features/grading/hooks/usePracticeRecommendations", () => ({
+  usePracticeRecommendations: (...args: unknown[]) => mockUsePracticeRecommendations(...args),
+}));
+
+const mockUseOfflineQueueProcessor = jest.fn();
+jest.mock("../../../src/features/grading/hooks/useOfflineQueueProcessor", () => ({
+  useOfflineQueueProcessor: () => mockUseOfflineQueueProcessor(),
+}));
+
+jest.mock("../../../src/hooks/useNetworkStatus", () => ({
+  useNetworkStatus: () => ({ isConnected: true }),
+}));
+
+let capturedQueueJobCompleteListener: ((...args: unknown[]) => void) | null = null;
+const mockOnQueueJobCompleteUnsubscribe = jest.fn();
+jest.mock("../../../src/services/queue-events", () => ({
+  onQueueJobComplete: jest.fn((listener: (...args: unknown[]) => void) => {
+    capturedQueueJobCompleteListener = listener;
+    return mockOnQueueJobCompleteUnsubscribe;
+  }),
+}));
+
 const makeApprovalControls = (overrides = {}) => ({
   approve: jest.fn(),
   isApproving: false,
@@ -106,6 +129,17 @@ describe("grading screen", () => {
     mockGradingCard.mockReset();
     mockUseManualGrading.mockReset();
     mockUseManualGrading.mockReturnValue(null);
+    mockUsePracticeRecommendations.mockReset();
+    mockUsePracticeRecommendations.mockReturnValue(null);
+    mockUseOfflineQueueProcessor.mockReset();
+    mockUseOfflineQueueProcessor.mockReturnValue({
+      pendingCount: 0,
+      processingItemId: null,
+      queueItems: [],
+      retryItem: jest.fn(),
+    });
+    capturedQueueJobCompleteListener = null;
+    mockOnQueueJobCompleteUnsubscribe.mockReset();
   });
 
   it("uses missing-param failure state and does not enable review controls", () => {
@@ -423,5 +457,143 @@ describe("grading screen", () => {
       pathname: "/(teacher)/camera",
       params: { classId: "class-1", studentId: "student-1", assignmentId: FAILED_RESULT.assignment_id },
     });
+  });
+
+  it("when status='completed' and result != null → usePracticeRecommendations called with result", () => {
+    mockParams = { classId: "class-1", studentId: "student-1" };
+    mockUseGradingJob.mockReturnValue({ status: "completed", result: COMPLETED_RESULT, error: null, photoUri: null, retrying: false });
+    mockUseGradingReview.mockReturnValue(null);
+
+    render(<GradingScreen />);
+
+    expect(mockUsePracticeRecommendations).toHaveBeenCalledWith(COMPLETED_RESULT);
+  });
+
+  it("when status='processing' → practiceRecommendationsControls=null passed to GradingCard", () => {
+    mockParams = { classId: "class-1", studentId: "student-1" };
+    mockUseGradingJob.mockReturnValue({ status: "processing", result: null, error: null, photoUri: null, retrying: false });
+    mockUseGradingReview.mockReturnValue(null);
+    const mockPracticeControls = { recommendations: ["A"], originalRecommendations: ["A"], modifiedIndices: new Set(), editRecommendation: jest.fn(), resetRecommendation: jest.fn() };
+    mockUsePracticeRecommendations.mockReturnValue(mockPracticeControls);
+
+    render(<GradingScreen />);
+
+    const props = mockGradingCard.mock.calls[mockGradingCard.mock.calls.length - 1]?.[0] as any;
+    expect(props.practiceRecommendationsControls).toBeNull();
+  });
+
+  it("when status='completed' → practiceRecommendationsControls passed to GradingCard as hook return value", () => {
+    mockParams = { classId: "class-1", studentId: "student-1" };
+    mockUseGradingJob.mockReturnValue({ status: "completed", result: COMPLETED_RESULT, error: null, photoUri: null, retrying: false });
+    mockUseGradingReview.mockReturnValue(null);
+    const mockPracticeControls = { recommendations: ["A"], originalRecommendations: ["A"], modifiedIndices: new Set(), editRecommendation: jest.fn(), resetRecommendation: jest.fn() };
+    mockUsePracticeRecommendations.mockReturnValue(mockPracticeControls);
+
+    render(<GradingScreen />);
+
+    const props = mockGradingCard.mock.calls[mockGradingCard.mock.calls.length - 1]?.[0] as any;
+    expect(props.practiceRecommendationsControls).toBe(mockPracticeControls);
+  });
+
+  it("when status='queued-offline' → GradingCard receives status=queued-offline", () => {
+    mockParams = { classId: "class-1", studentId: "student-1" };
+    mockUseGradingJob.mockReturnValue({ status: "queued-offline", result: null, error: null, photoUri: "file://test.jpg", retrying: false, queueItemId: "queue-1" });
+    mockUseGradingReview.mockReturnValue(null);
+
+    render(<GradingScreen />);
+
+    const props = mockGradingCard.mock.calls[mockGradingCard.mock.calls.length - 1]?.[0] as any;
+    expect(props.status).toBe("queued-offline");
+  });
+
+  it("shows pending count banner when pendingCount > 0", () => {
+    mockParams = { classId: "class-1", studentId: "student-1" };
+    mockUseGradingJob.mockReturnValue({ status: "queued-offline", result: null, error: null, photoUri: null, retrying: false, queueItemId: "q-1" });
+    mockUseGradingReview.mockReturnValue(null);
+    mockUseOfflineQueueProcessor.mockReturnValue({
+      pendingCount: 3,
+      processingItemId: null,
+      queueItems: [],
+      retryItem: jest.fn(),
+    });
+
+    render(<GradingScreen />);
+
+    expect(screen.getByText(/3 photos pending upload/)).toBeTruthy();
+  });
+
+  it("does not show pending banner when pendingCount=0", () => {
+    mockParams = { classId: "class-1", studentId: "student-1" };
+    mockUseGradingJob.mockReturnValue({ status: "processing", result: null, error: null, photoUri: null, retrying: false, queueItemId: null });
+    mockUseGradingReview.mockReturnValue(null);
+
+    render(<GradingScreen />);
+
+    expect(screen.queryByText(/photos pending upload/)).toBeNull();
+  });
+
+  it("onRetryOfflineUpload is undefined when item has not permanently failed", () => {
+    mockParams = { classId: "class-1", studentId: "student-1" };
+    mockUseGradingJob.mockReturnValue({ status: "queued-offline", result: null, error: null, photoUri: null, retrying: false, queueItemId: "q-1" });
+    mockUseGradingReview.mockReturnValue(null);
+    mockUseOfflineQueueProcessor.mockReturnValue({
+      pendingCount: 1,
+      processingItemId: null,
+      queueItems: [{ id: "q-1", status: "pending", attemptCount: 1 }],
+      retryItem: jest.fn(),
+    });
+
+    render(<GradingScreen />);
+
+    const props = mockGradingCard.mock.calls[mockGradingCard.mock.calls.length - 1]?.[0] as any;
+    expect(props.onRetryOfflineUpload).toBeUndefined();
+  });
+
+  it("onRetryOfflineUpload is defined when item has permanently failed (attemptCount >= 3)", () => {
+    const mockRetryItem = jest.fn();
+    mockParams = { classId: "class-1", studentId: "student-1" };
+    mockUseGradingJob.mockReturnValue({ status: "queued-offline", result: null, error: null, photoUri: null, retrying: false, queueItemId: "q-1" });
+    mockUseGradingReview.mockReturnValue(null);
+    mockUseOfflineQueueProcessor.mockReturnValue({
+      pendingCount: 0,
+      processingItemId: null,
+      queueItems: [{ id: "q-1", status: "failed", attemptCount: 3 }],
+      retryItem: mockRetryItem,
+    });
+
+    render(<GradingScreen />);
+
+    const props = mockGradingCard.mock.calls[mockGradingCard.mock.calls.length - 1]?.[0] as any;
+    expect(props.onRetryOfflineUpload).toBeDefined();
+    // Calling it should invoke retryItem with the queueItemId
+    act(() => { props.onRetryOfflineUpload(); });
+    expect(mockRetryItem).toHaveBeenCalledWith("q-1");
+  });
+
+  it("navigates back when onQueueJobComplete fires while status=queued-offline", () => {
+    mockParams = { classId: "class-1", studentId: "student-1" };
+    mockUseGradingJob.mockReturnValue({ status: "queued-offline", result: null, error: null, photoUri: null, retrying: false, queueItemId: "q-1" });
+    mockUseGradingReview.mockReturnValue(null);
+
+    render(<GradingScreen />);
+
+    // Simulate a queued job completing
+    act(() => { capturedQueueJobCompleteListener?.("asgn_1", "job_1"); });
+
+    expect(mockBack).toHaveBeenCalled();
+  });
+
+  it("all existing 5.3–5.7 grading behaviors unchanged when status=processing", () => {
+    mockParams = { classId: "class-1", studentId: "student-1" };
+    mockUseGradingJob.mockReturnValue({ status: "processing", result: null, error: null, photoUri: null, retrying: false, queueItemId: null });
+    mockUseGradingReview.mockReturnValue(null);
+
+    render(<GradingScreen />);
+
+    const props = mockGradingCard.mock.calls[mockGradingCard.mock.calls.length - 1]?.[0] as any;
+    expect(props.status).toBe("processing");
+    expect(props.onRetakePhoto).toBeUndefined();
+    expect(props.onGradeManually).toBeUndefined();
+    expect(props.onRetryOfflineUpload).toBeUndefined();
   });
 });

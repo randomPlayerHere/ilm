@@ -14,6 +14,9 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.29.2",
+    "@react-native-async-storage/async-storage": "^2.1.0",
+    "@react-native-community/netinfo": "^11.4.1",
+    "expo-file-system": "~18.0.0",
     "@expo/vector-icons": "~14.0.4",
     "@ilm/contracts": "workspace:*",
     "@ilm/design-tokens": "workspace:*",
@@ -55,7 +58,7 @@
     "preset": "jest-expo",
     "setupFilesAfterEnv": [],
     "transformIgnorePatterns": [
-      "node_modules/(?!(?:.*node_modules/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|tamagui|@tamagui/.*))"
+      "node_modules/(?!(?:.*node_modules/)?((jest-)?react-native|@react-native(-community)?|@react-native-async-storage|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|tamagui|@tamagui/.*))"
     ],
     "moduleNameMapper": {
       "^@ilm/(.*)$": "<rootDir>/../../packages/$1/src"

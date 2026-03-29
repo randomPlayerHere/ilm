@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { GradingJobWithResultResponse, ManualGradeResponse } from "@ilm/contracts";
+import type { GradingJobWithResultResponse } from "@ilm/contracts";
 import { getAuthData } from "../../../services/token-storage";
 import { submitManualGrade } from "../../../services/grading-service";
 
@@ -40,7 +40,7 @@ export function useManualGrading(
     if (isNaN(parsed)) return;
     const clamped = Math.min(100, Math.max(0, parsed));
     setScoreValue(clamped);
-    setScoreInputText(raw);
+    setScoreInputText(String(clamped));
   }, []);
 
   const setFeedback = useCallback((text: string) => {
