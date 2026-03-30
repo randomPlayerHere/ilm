@@ -16,6 +16,7 @@ class Settings:
     database_url: str
     # S3 / MinIO
     s3_endpoint_url: str
+    s3_public_url: str  # Public-facing URL for presigned URLs (e.g. LAN IP for physical devices)
     s3_access_key: str
     s3_secret_key: str
     s3_bucket: str
@@ -48,6 +49,7 @@ def _load_settings() -> Settings:
         google_oidc_algorithm=os.getenv("GOOGLE_OIDC_ALGORITHM", "RS256"),
         database_url=os.getenv("DATABASE_URL", "postgresql+asyncpg://ilm:ilm@localhost:5432/ilm"),
         s3_endpoint_url=os.getenv("S3_ENDPOINT_URL", ""),
+        s3_public_url=os.getenv("S3_PUBLIC_URL", ""),
         s3_access_key=os.getenv("S3_ACCESS_KEY", "minioadmin"),
         s3_secret_key=os.getenv("S3_SECRET_KEY", "minioadmin"),
         s3_bucket=os.getenv("S3_BUCKET", "ilm-assignments"),

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from urllib.parse import urlparse, urlunparse
 
 import boto3
 from botocore.config import Config
@@ -28,6 +29,20 @@ def _make_s3_client() -> boto3.client:
             signature_version="s3v4",
         ),
     )
+
+
+def _rewrite_to_public_url(url: str) -> str:
+    """Replace the host in a presigned URL with S3_PUBLIC_URL if configured.
+
+    Needed when MinIO runs in Docker (minio:9000) but clients are on the LAN —
+    they can't resolve Docker-internal hostnames.
+    """
+    if not settings.s3_public_url:
+        return url
+    public = urlparse(settings.s3_public_url)
+    parsed = urlparse(url)
+    rewritten = parsed._replace(scheme=public.scheme, netloc=public.netloc)
+    return urlunparse(rewritten)
 
 
 def generate_presigned_upload_url(
@@ -58,7 +73,7 @@ def generate_presigned_upload_url(
         Params={"Bucket": settings.s3_bucket, "Key": key},
         ExpiresIn=_PRESIGNED_URL_EXPIRY_SECONDS,
     )
-    return {"url": url, "key": key}
+    return {"url": _rewrite_to_public_url(url), "key": key}
 
 
 def generate_presigned_download_url(storage_key: str) -> str:
@@ -73,4 +88,4 @@ def generate_presigned_download_url(storage_key: str) -> str:
         Params={"Bucket": settings.s3_bucket, "Key": storage_key},
         ExpiresIn=_PRESIGNED_URL_EXPIRY_SECONDS,
     )
-    return url
+    return _rewrite_to_public_url(url)

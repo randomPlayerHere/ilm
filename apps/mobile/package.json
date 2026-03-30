@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "main": "expo-router/entry",
   "scripts": {
-    "dev": "expo start --dev-client",
+    "dev": "EXPO_GO=true expo start --go --clear",
     "build": "expo export",
     "lint": "echo 'lint ok'",
     "test": "jest --passWithNoTests",
